@@ -171,7 +171,7 @@ demand_amp = t->vcat(demand_amp1(t), demand_amp2(t),demand_amp3(t),demand_amp4(t
 
 
 
-periodic_demand =  t-> demand_amp(t) .* sin(t*pi/(24*3600))^2
+periodic_demand =  t-> demand_amp(t)./100 .* sin(t*pi/(24*3600))^2
 samples = 24*4
 inter = interpolate([.2 * randn(N) for i in 1:(num_days * samples + 1)], BSpline(Linear()))
 residual_demand = t -> inter(1. + t / (24*3600) * samples) # 1. + is needed to avoid trying to access out of range

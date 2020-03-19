@@ -108,23 +108,6 @@ function ACtoymodel_lin!(du, u, p, t)
 	return nothing
 end
 
-@doc """
-solve AC power flow
-"""
-function rootfunc!(du, u, p, t)
-	power_ILC = p.hl.current_background_power
-	periodic_power = - p.periodic_demand(t) .+ p.periodic_infeed(t)
-	fluctuating_power = - p.residual_demand(t) .+ p.fluctuating_infeed(t) # here we can add fluctuating infeed as well
-	flows = - (p.incidence * p.coupling * sin.(p.incidence' * u))
-
-
-	@. du = p.ll.M_inv .* (power_ILC .+ periodic_power .+ fluctuating_power .+ flows)
-	return nothing
-end
-
-
-
-
 
 @doc """
     HourlyUpdate()
@@ -179,71 +162,11 @@ function (hu::HourlyUpdate)(integrator)
 end
 
 
-function neighbour_map(g, vc)
-    Dict([v => neighbors(g, v) for v in vc])
-end
-
-function ilc_update(control_energy, g)
-    # set of vertices that are independent
-    # (no two vertices are adjacent to each other)
-    ilc_nodes = independent_set(g, DegreeIndependentSet())
-    nm = neighbour_map(g, ilc_nodes)
-    return Dict([x => (control_energy[x] + sum(control_energy[nm[x]]))/length(collect(values(nm[x]))) for x in ilc_nodes])
-end
-
-function DaylyUpdate(integrator)
-	@sync @. integrator.p.hl.daily_background_power += integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday
-	#println("mismatch ", integrator.p.hl.daily_background_power)
-	nothing
-end
-
-@doc """
-    DailyUpdate_4(integrator) - vertex cover ILC with averaged update from neighbors
-PeriodicCallback function acting on the `integrator` that implements the ILC once a simulation day.
-"""
-function DailyUpdate_4(integrator)
-	#y_h = ilc_update(integrator.p.hl.mismatch_yesterday, integrator.p.graph)
-	#println("y_h ", y_h)
-	cover_values = [integrator.p.hl.mismatch_yesterday[:,x] + sum(integrator.p.hl.mismatch_yesterday[:,integrator.p.hl.ilc_covers[x]],dims=2)./length(collect(values(integrator.p.hl.ilc_covers[x]))) for x in integrator.p.hl.ilc_nodes]
-	@sync integrator.p.hl.daily_background_power[:,integrator.p.hl.ilc_nodes] .+= integrator.p.hl.kappa .* hcat(Vector(collect(cover_values))...)
-	nothing
-end
-
-
-@doc """
-    DailyUpdate_5(integrator) - ILC at vertex cover with local update
-PeriodicCallback function acting on the `integrator` that implements the ILC once a simulation day.
-"""
-function DailyUpdate_5(integrator)
-	#cover_values = [integrator.p.hl.mismatch_yesterday[:,x] + sum(integrator.p.hl.mismatch_yesterday[:,integrator.p.hl.ilc_covers[x]],dims=2)./length(collect(values(integrator.p.hl.ilc_covers[x]))) for x in integrator.p.hl.ilc_nodes]
-	@sync integrator.p.hl.daily_background_power[:,integrator.p.hl.ilc_nodes] .+= integrator.p.hl.kappa .* integrator.p.hl.mismatch_yesterday[:,integrator.p.hl.ilc_nodes]
-	nothing
-end
-
-@doc """
-    DaylyUpdate(integrator) - ILC at 50% of nodes and random averaged update (3 random nodes)
-PeriodicCallback function acting on the `integrator` that implements the ILC once a simulation day.
-"""
-function DailyUpdate_6(integrator)
-	@sync integrator.p.hl.daily_background_power +=  integrator.p.hl.mismatch_yesterday * integrator.p.hl.kappa'
-	nothing
-end
-
-@doc """
-    DaylyUpdate(integrator) - local ILC
-PeriodicCallback function acting on the `integrator` that implements the ILC once a simulation day.
-"""
-function DaylyUpdate_reinit(integrator)
-	@sync @. integrator.p.hl.daily_background_power += integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday
-	reinit!(integrator, integrator.u; t0=integrator.t, tf=integrator.sol.prob.tspan[2], erase_sol=true)
-	nothing
-end
-
 
 function DailyUpdate_X(integrator)
 	#println("mismatch ", integrator.p.hl.daily_background_power)
 	#println("Q ", integrator.p.hl.Q)
-	@sync integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
+	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
 	#println("mismatch ", integrator.p.hl.daily_background_power)
 	nothing
 end
