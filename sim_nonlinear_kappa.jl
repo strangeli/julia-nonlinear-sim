@@ -225,7 +225,7 @@ monte_prob = EnsembleProblem(
 #	reduction = (u, data, I) -> experiments.reduction_ic(u, data, I, batch_size),
 	u_init = [])
 
-@time res = solve(monte_prob,
+res = solve(monte_prob,
 					 Rodas4P(),
 					 trajectories=num_monte,
 					 batch_size=batch_size)
@@ -235,27 +235,26 @@ hourly_energy = [p[10] for p in res.u]
 norm_energy_d = [p[11] for p in res.u]
 
 using LaTeXStrings
-plot(mean(norm_energy_d[1],dims=2),legend=:bottomright, ylims=(0,1e6), label = L"\kappa = 0\, h^{-1}", ytickfontsize=14,
+plot(mean(norm_energy_d[1],dims=2),legend=:bottomright, label = L"\kappa = 0\, h^{-1}", ytickfontsize=14,
                xtickfontsize=14, linestyle=:dot, margin=8Plots.mm,
-    		   legendfontsize=14, linewidth=3,xaxis=("days [c]",font(14)))
+    		   legendfontsize=14, linewidth=3,xaxis=("days [c]",font(14)), yaxis = ("2-norm of the error",font(14), left_margin=12Plots.mm)) #  ylims=(0,1e6)
 plot!(mean(norm_energy_d[2],dims=2), label= L"\kappa = 0.25\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
 plot!(mean(norm_energy_d[3],dims=2), label= L"\kappa = 0.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
 plot!(mean(norm_energy_d[4],dims=2),label=  L"\kappa = 0.75\, h^{-1}", linewidth = 3, linestyle=:dash)
 plot!(mean(norm_energy_d[5],dims=2), label= L"\kappa = 1\, h^{-1}", linewidth = 3, linestyle=:solid)
 #title!("Error norm")
-yaxis!("2-norm of the error",font(14), left_margin=12Plots.mm)
-savefig("$dir/20191115_kappa_Y6_hetero.png")
+savefig("$dir/20200319_kappa_Y6_hetero.png")
 
 using LaTeXStrings
-plot(mean(norm_energy_d[5],dims=2),legend=:topright, ylims=(0,1e6), label = L"\kappa = 1\, h^{-1}", ytickfontsize=14,
+plot(mean(norm_energy_d[5],dims=2),legend=:topright, label = L"\kappa = 1\, h^{-1}", ytickfontsize=14,
                xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
-    		   legendfontsize=13, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))
+    		   legendfontsize=13, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))  # ylims=(0,1e6)
 plot!(mean(norm_energy_d[6],dims=2),label=  L"\kappa = 1.25\, h^{-1}", linewidth = 3, linestyle=:dash)
 plot!(mean(norm_energy_d[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
 plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
 #plot!(mean(norm_energy_d[9],dims=2), label= L"\kappa = 2 h^{-1}", linewidth = 3, linestyle=:dot)
 #title!("Error norm")
-savefig("$dir/20191115_kappa2_Y6_hetero.png")
+savefig("$dir/20200319_kappa2_Y6_hetero.png")
 
 
 

@@ -195,7 +195,7 @@ function prob_func_ic(prob, i, repeat, batch_size, kappa_lst, num_days)
 
 	ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
 		callback=CallbackSet(PeriodicCallback(hourly_update, 3600),
-							 PeriodicCallback(network_dynamics.DaylyUpdate, 3600*24)))
+							 PeriodicCallback(network_dynamics.DailyUpdate_X, 3600*24)))
 end
 
 
@@ -289,4 +289,6 @@ end
 function movingmean(t,int,a,b)
     idx = findall(x -> t + int > x > t - int, a)
     mean(b[idx])
+end
+
 end
