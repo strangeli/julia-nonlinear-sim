@@ -5,11 +5,11 @@ It depends on the modules `network_dynamics.jl` and `observables.jl`
 
 # Examples
 ```julia-repl
-julia> include("src/experiments.jl")
-Main.experiments
+julia> include("src/system_structs.jl")
+Main.system_structs
 ```
 """
-module experiments
+module system_structs
 
 using Random # fix random seed
 using DifferentialEquations # problems types
@@ -23,14 +23,13 @@ using Statistics
 using Distributions
 using DSP
 using ToeplitzMatrices
-#using MCBB
+
 
 begin
 	# import dynamics and observables
 	dir = @__DIR__
 	include("$dir/network_dynamics.jl")
 	include("$dir/observables.jl")
-#	include("$dir/../input_data/demand_curves.jl")
 end
 
 l_hour = 60 * 60 # in s
@@ -60,10 +59,10 @@ end
 
 
 @doc """
-    UlmoPars(N, D, ll. hl, periodic_infeed, periodic_demand, fluctuating_infeed, residual_demand, incidence, coupling)
+    UlmoPars(N, D, ll. hl, periodic_infeed, periodic_demand, fluctuating_infeed, residual_demand, incidence, coupling, graph)
 Define a parameter struct.
 """
-@with_kw mutable struct UlMoPars #<: DEParameters # required parameter supertype for MCBB
+@with_kw mutable struct UlMoPars
 	N::Int # number of nodes
 	D::Int # degrees of freedom of each node
     ll::LeakyIntegratorPars # low level control parameters
@@ -114,7 +113,7 @@ function default_pars(N)
 	#g = SimpleGraph(1)
 	g = random_regular_graph(iseven(3N) ? N : (N-1), 3)
 	#incidence = incidence_matrix(g, oriented=true)
-	coupling= 6. .* diagm(0=>ones(size(incidence_matrix(g, oriented=true),2)))
+	coupling = 6. .* diagm(0=>ones(size(incidence_matrix(g, oriented=true),2)))
 	vc = 1:N # independent_set(g, DegreeIndependentSet()) # ilc_nodes
 	cover = [] # Dict([v => neighbors(g, v) for v in vc]) # ilc_cover
 	u = [zeros(1000,1);1;zeros(1000,1)];
@@ -168,6 +167,7 @@ function compound_pars(N, low_layer_control, kappa, ilc_nodes, ilc_covers, Q)
 end
 
 ##############################################################################
+##############################################################################
 # Monte Carlo functions
 
 get_run(i, batch_size) = mod(i, batch_size)==0 ? batch_size : mod(i, batch_size)
@@ -178,10 +178,6 @@ function prob_func_ic(prob, i, repeat, batch_size, kappa_lst, num_days)
 	println("sim ", i)
 	run = get_run(i, batch_size)
     batch = get_batch(i, batch_size)
-
-	# demand = [DemCurve.get_random_day_seq(data,num_days) |> DemCurve.interp_data for n in 1:prob.p.N] # does it need to depend on "run" somehow?
-	# prob.p.residual_demand = t -> [d(t) for d in demand]
-	# prob.p.hl.current_background_power = mean.(demand)
 
 	prob.p.hl.daily_background_power .= 0.
 	prob.p.hl.current_background_power .= 0.
@@ -213,28 +209,24 @@ function observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_day
 
 	hourly_energy = zeros(24*num_days,N)
 	for i=1:24*num_days
-		hourly_energy[i,1] = sol(i*3600)[energy_filter[1]]
-		hourly_energy[i,2] = sol(i*3600)[energy_filter[2]]
-		hourly_energy[i,3] = sol(i*3600)[energy_filter[3]]
-		hourly_energy[i,4] = sol(i*3600)[energy_filter[4]]
+		for j = 1:N
+			hourly_energy[i,j] = sol(i*3600)[energy_filter[j]]
+		end
 	end
 
 	ILC_power = zeros(num_days,24,N)
 	norm_energy_d = zeros(num_days,N)
-	norm_energy_d[1,1] = norm(hourly_energy[1:24,1])
-	norm_energy_d[1,2] = norm(hourly_energy[1:24,2])
-	norm_energy_d[1,3] = norm(hourly_energy[1:24,3])
-	norm_energy_d[1,4] = norm(hourly_energy[1:24,4])
+	for j = 1:N
+		norm_energy_d[1,j] = norm(hourly_energy[1:24,j])
+	end
 
 	for i=2:num_days
-		ILC_power[i,:,1] = sol.prob.p.hl.Q*(ILC_power[i-1,:,1] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*24+1:i*24,1])
-		ILC_power[i,:,2] = sol.prob.p.hl.Q*(ILC_power[i-1,:,2] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*24+1:i*24,2])
-		ILC_power[i,:,3] = sol.prob.p.hl.Q*(ILC_power[i-1,:,3] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*24+1:i*24,3])
-		ILC_power[i,:,4] = sol.prob.p.hl.Q*(ILC_power[i-1,:,4] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*24+1:i*24,4])
-		norm_energy_d[i,1] = norm(hourly_energy[(i-1)*24+1:i*24,1])
-		norm_energy_d[i,2] = norm(hourly_energy[(i-1)*24+1:i*24,2])
-		norm_energy_d[i,3] = norm(hourly_energy[(i-1)*24+1:i*24,3])
-		norm_energy_d[i,4] = norm(hourly_energy[(i-1)*24+1:i*24,4])
+		for j = 1:N
+			ILC_power[i,:,j] = sol.prob.p.hl.Q*(ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*24+1:i*24,j])
+		end
+		for j = 1:N
+			norm_energy_d[i,j] = norm(hourly_energy[(i-1)*24+1:i*24,j])
+		end
 	end
 
 	((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, hourly_energy, norm_energy_d), false)
@@ -260,19 +252,6 @@ function reduction_ic(u, data, I, batch_size) # what should be extracted from on
 	energy_std = std(energy)
 	energy_abs_mean = sum(energy_abs)/length(energy_abs)
 
-
-	#var_omega_max = maximum(var_omega)
-	#var_omega_ld_mean = mean(var_omega_ld)
-
-	#=
-    new_output = [omega_max_max ex_mean energy_mean ex_std energy_std] #var_omega_max var_omega_ld_mean]
-
-    if isempty(u)
-        return (new_output, false)
-    else
-        return (vcat(u, new_output), false)
-    end
-	=#
 	new_output = [omega_max_max, ex_mean, energy_mean, ex_std, energy_std, energy_abs_mean] #var_omega_max var_omega_ld_mean]
 	append!(u, [new_output, ]), false # This way of append! ensures that we get an Array of Arrays
 end

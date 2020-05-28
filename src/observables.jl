@@ -190,24 +190,4 @@ function var_last_days(sol, state_filter, n_days)
 end
 
 
-
-@doc """
-    max_abs_freq(time_series, freq_idx)
-
-Calculate the maximum absolute value of the frequency deviation.
-"""
-function max_abs_freq(time_series::DESolution, freq_idx=1:2)
-    println("ToDo")
-end
-
-function surv(sol)
-println("ToDo")
-end
-
-function control_energy(sol)
-println("ToDo")
-end
-
-
-
 end
