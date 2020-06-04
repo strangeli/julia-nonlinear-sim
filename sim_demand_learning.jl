@@ -35,7 +35,7 @@ end
 
 ############################################
 
-@everywhere begin
+begin
 	l_day = 3600*24 # DemCurve.l_day
 	l_hour = 3600 # DemCurve.l_hour
 	l_minute = 60 # DemCurve.l_minute
