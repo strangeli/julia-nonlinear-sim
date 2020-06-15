@@ -24,7 +24,6 @@ module system_structs
 	using DSP
 	using ToeplitzMatrices
 
-
 	begin
 		# import dynamics and observables
 		dir = @__DIR__
@@ -54,9 +53,8 @@ module system_structs
 		ilc_nodes
 		ilc_covers
 		Q
+		update # OR n_updates_per_day
 	end
-
-
 
 	@doc """
 	    UlmoPars(N, D, ll. hl, periodic_infeed, periodic_demand, fluctuating_infeed, residual_demand, incidence, coupling, graph)
@@ -104,6 +102,8 @@ module system_structs
 	mody(x, y) = (x, mod2pi.(y .+ π/2) .- π/2)
 
 
+
+
 	@doc """
 	    default_pars(N)
 	Setup the system with default parameters.
@@ -120,11 +120,13 @@ module system_structs
 		fc = 1/6;
 		a = digitalfilter(Lowpass(fc),Butterworth(2));
 		Q1 = filtfilt(a,u);#Markov Parameter
-		Q = Toeplitz(Q1[1001:1001+24-1],Q1[1001:1001+24-1]);
-		higher_layer_control = ILCPars(kappa=0.35, mismatch_yesterday=zeros(24, N), daily_background_power=zeros(24, N), current_background_power=zeros(N), ilc_nodes=vc, ilc_covers=cover, Q=Q)
+		Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]);
+		#Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]);
+		## change bei update half
+		higher_layer_control = ILCPars(kappa=0.35/update, mismatch_yesterday=zeros(n_updates_per_day, N), daily_background_power=zeros(n_updates_per_day, N), current_background_power=zeros(N), ilc_nodes=vc, ilc_covers=cover, Q=Q,update=update)
 		periodic_infeed = t -> zeros(N)
 		peak_demand = rand(N)
-		periodic_demand= t -> zeros(N)#peak_demand .* abs(sin(pi * t/24.))
+		periodic_demand= t -> zeros(N)#peak_demand .* abs(sin(pi * t/n_updates_per_day.))
 		fluctuating_infeed = t -> zeros(N)
 		residual_demand= t -> zeros(N)
 
@@ -141,8 +143,9 @@ module system_structs
 								g)
 	end
 
-	function compound_pars(N, low_layer_control, kappa, ilc_nodes, ilc_covers, Q)
-		higher_layer_control = ILCPars(kappa=kappa, mismatch_yesterday=zeros(24, N), daily_background_power=zeros(24, N), current_background_power=zeros(N),ilc_nodes=ilc_nodes, ilc_covers=ilc_covers, Q=Q)
+	function compound_pars(N, low_layer_control, kappa, ilc_nodes, ilc_covers, Q, update)
+		n_updates_per_day = Int(l_day/update)
+		higher_layer_control = ILCPars(kappa=kappa, mismatch_yesterday=zeros(n_updates_per_day, N), daily_background_power=zeros(n_updates_per_day, N), current_background_power=zeros(N),ilc_nodes=ilc_nodes, ilc_covers=ilc_covers, Q=Q,update=update)
 
 		periodic_infeed = t -> zeros(N)
 		periodic_demand= t -> zeros(N)
@@ -173,101 +176,100 @@ module system_structs
 	get_run(i, batch_size) = mod(i, batch_size)==0 ? batch_size : mod(i, batch_size)
 	get_batch(i, batch_size) = 1 + (i - 1) ÷ batch_size
 
-
 	function prob_func_ic(prob, i, repeat, batch_size, kappa_lst, num_days)
-		println("sim ", i)
-		run = get_run(i, batch_size)
-	    batch = get_batch(i, batch_size)
+			println("sim ", i)
+			run = get_run(i, batch_size)
+		    batch = get_batch(i, batch_size)
 
-		prob.p.hl.daily_background_power .= 0.
-		prob.p.hl.current_background_power .= 0.
-		prob.p.hl.mismatch_yesterday .= 0.
+			prob.p.hl.daily_background_power .= 0.
+			prob.p.hl.current_background_power .= 0.
+			prob.p.hl.mismatch_yesterday .= 0.
 
-		prob.p.hl.kappa = kappa_lst[batch]
+			prob.p.hl.kappa = kappa_lst[batch]
 
-		#prob.p.coupling = 800. .* diagm(0=>ones(ne(prob.p.graph)))
+			#prob.p.coupling = 800. .* diagm(0=>ones(ne(prob.p.graph)))
 
-		hourly_update = network_dynamics.HourlyUpdate()
+			hourly_update = network_dynamics.HourlyUpdate()
 
-		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
-			callback=CallbackSet(PeriodicCallback(hourly_update, 3600),
-								 PeriodicCallback(network_dynamics.DailyUpdate_X, 3600*24)))
-	end
-
-
-
-	function observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N) # what should be extracted from one run
-		# sol.prob.callback.discrete_callbacks[1].affect!.f.integrated_control_power_history
-		omega_max = maximum(abs.(sol[freq_filter,:]))
-		ex = observables.frequency_exceedance(sol, freq_filter, freq_threshold)
-		#control_energy = observables.sum_abs_energy_last_days(sol, energy_filter, sol.prob.tspan[2]/(24*3600))
-		control_energy = observables.sum_abs_energy_last_days(sol, energy_filter, sol.prob.tspan[2]/(24*3600))
-		var_omega = var(sol,dims=2)[freq_filter]
-		#var_ld = observables.var_last_days(sol, freq_filter, sol.prob.tspan[2]/(24*3600))
-		var_ld = observables.var_last_days(sol, freq_filter, sol.prob.tspan[2]/(24*3600))
-	#	control_energy_abs = sol[energy_abs_filter,end]
-
-		hourly_energy = zeros(24*num_days,N)
-		for i=1:24*num_days
-			for j = 1:N
-				hourly_energy[i,j] = sol(i*3600)[energy_filter[j]]
-			end
+			ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
+				callback=CallbackSet(PeriodicCallback(hourly_update, 3600),
+									 PeriodicCallback(network_dynamics.DailyUpdate_X, 3600*24)))
 		end
 
-		ILC_power = zeros(num_days,24,N)
-		norm_energy_d = zeros(num_days,N)
-		for j = 1:N
-			norm_energy_d[1,j] = norm(hourly_energy[1:24,j])
+
+
+		function observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N) # what should be extracted from one run
+			# sol.prob.callback.discrete_callbacks[1].affect!.f.integrated_control_power_history
+			omega_max = maximum(abs.(sol[freq_filter,:]))
+			ex = observables.frequency_exceedance(sol, freq_filter, freq_threshold)
+			#control_energy = observables.sum_abs_energy_last_days(sol, energy_filter, sol.prob.tspan[2]/(24*3600))
+			control_energy = observables.sum_abs_energy_last_days(sol, energy_filter, sol.prob.tspan[2]/(24*3600))
+			var_omega = var(sol,dims=2)[freq_filter]
+			#var_ld = observables.var_last_days(sol, freq_filter, sol.prob.tspan[2]/(24*3600))
+			var_ld = observables.var_last_days(sol, freq_filter, sol.prob.tspan[2]/(24*3600))
+		#	control_energy_abs = sol[energy_abs_filter,end]
+
+			hourly_energy = zeros(24*num_days,N)
+			for i=1:24*num_days
+				for j = 1:N
+					hourly_energy[i,j] = sol(i*3600)[energy_filter[j]]
+				end
+			end
+
+			ILC_power = zeros(num_days,24,N)
+			norm_energy_d = zeros(num_days,N)
+			for j = 1:N
+				norm_energy_d[1,j] = norm(hourly_energy[1:24,j])
+			end
+
+			for i=2:num_days
+				for j = 1:N
+					ILC_power[i,:,j] = sol.prob.p.hl.Q*(ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*24+1:i*24,j])
+				end
+				for j = 1:N
+					norm_energy_d[i,j] = norm(hourly_energy[(i-1)*24+1:i*24,j])
+				end
+			end
+
+			((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, hourly_energy, norm_energy_d), false)
 		end
 
-		for i=2:num_days
-			for j = 1:N
-				ILC_power[i,:,j] = sol.prob.p.hl.Q*(ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*24+1:i*24,j])
-			end
-			for j = 1:N
-				norm_energy_d[i,j] = norm(hourly_energy[(i-1)*24+1:i*24,j])
-			end
+
+
+		function reduction_ic(u, data, I, batch_size) # what should be extracted from one batch
+		    # u is the solution of previous batches
+		    # data is the solution of the current batch
+		    # we obtain:
+			omega_max_abs = [dat[1] for dat in data] # max frequency
+		    	ex = [dat[2] for dat in data] # ex
+			energy = [dat[3] for dat in data] # working as array???
+			energy_abs = [dat[10] for dat in data]
+			#var_omega = [dat[4] for dat in data]
+			#var_omega_ld = [dat[5] for dat in data]
+
+			omega_max_max = maximum(omega_max_abs)
+			ex_mean = sum(ex)/batch_size
+			energy_mean = sum(energy)/length(energy) # summing over all nodes and runs in one batches now
+			ex_std = std(ex)
+			energy_std = std(energy)
+			energy_abs_mean = sum(energy_abs)/length(energy_abs)
+
+			new_output = [omega_max_max, ex_mean, energy_mean, ex_std, energy_std, energy_abs_mean] #var_omega_max var_omega_ld_mean]
+			append!(u, [new_output, ]), false # This way of append! ensures that we get an Array of Arrays
 		end
 
-		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, hourly_energy, norm_energy_d), false)
+
+		##############################################################################
+		# demand scenarios
+
+
+
+		################################################
+		# plotting help
+
+		function movingmean(t,int,a,b)
+		    idx = findall(x -> t + int > x > t - int, a)
+		    mean(b[idx])
+		end
+
 	end
-
-
-
-	function reduction_ic(u, data, I, batch_size) # what should be extracted from one batch
-	    # u is the solution of previous batches
-	    # data is the solution of the current batch
-	    # we obtain:
-		omega_max_abs = [dat[1] for dat in data] # max frequency
-	    	ex = [dat[2] for dat in data] # ex
-		energy = [dat[3] for dat in data] # working as array???
-		energy_abs = [dat[10] for dat in data]
-		#var_omega = [dat[4] for dat in data]
-		#var_omega_ld = [dat[5] for dat in data]
-
-		omega_max_max = maximum(omega_max_abs)
-		ex_mean = sum(ex)/batch_size
-		energy_mean = sum(energy)/length(energy) # summing over all nodes and runs in one batches now
-		ex_std = std(ex)
-		energy_std = std(energy)
-		energy_abs_mean = sum(energy_abs)/length(energy_abs)
-
-		new_output = [omega_max_max, ex_mean, energy_mean, ex_std, energy_std, energy_abs_mean] #var_omega_max var_omega_ld_mean]
-		append!(u, [new_output, ]), false # This way of append! ensures that we get an Array of Arrays
-	end
-
-
-	##############################################################################
-	# demand scenarios
-
-
-
-	################################################
-	# plotting help
-
-	function movingmean(t,int,a,b)
-	    idx = findall(x -> t + int > x > t - int, a)
-	    mean(b[idx])
-	end
-
-end

@@ -1,6 +1,5 @@
 @doc """
 This is a module that contains the system and control dynamics.
-
 # Examples
 ```julia-repl
 julia> include("src/network_dynamics.jl")
@@ -17,6 +16,11 @@ begin
 	using DSP
 	using ToeplitzMatrices
 end
+
+l_hour = 3600 # DemCurve.update
+l_day = 3600 * 24
+# update = l_hour/4  #/2 for half # DemCurve.update
+# n_updates_per_day=96 #l_day / update
 
 @doc """
     ACtoymodel!(du, u, p, t)
@@ -110,24 +114,25 @@ end
 
 
 @doc """
-    HourlyUpdate()
+    Updating()
 Store the integrated control power in memory.
-See also [`(hu::HourlyUpdate)`](@ref).
+See also [`(hu::Updating)`](@ref).
 """
-struct HourlyUpdate
+struct Updating
 	integrated_control_power_history
-	HourlyUpdate() = new([])
+	Updating() = new([])
 end
 
 
 
 @doc """
-    HourlyUpdate(integrator)
+    Updating(integrator)
 PeriodicCallback function acting on the `integrator` that is called every simulation hour (t = 1,2,3...).
 """
-function (hu::HourlyUpdate)(integrator)
-	hour = mod(round(Int, integrator.t/3600.), 24) + 1
-	last_hour = mod(hour-2, 24) + 1
+function (hu::Updating)(integrator)
+	n_updates_per_day = Int(l_day/integrator.p.hl.update)
+	updating_cycle  = mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1
+	last_update = mod(updating_cycle-2, n_updates_per_day) + 1
 
 	power_idx = 3*integrator.p.N+1:4*integrator.p.N
 	power_abs_idx = 4*integrator.p.N+1:5*integrator.p.N
@@ -138,20 +143,20 @@ function (hu::HourlyUpdate)(integrator)
 	# append!(hu.integrated_control_power_history, [integrator.u[power_idx]])
 
 	# println("===========================")
-	# println("Starting hour $hour, last hour was $last_hour")
+	# println("Starting hour $hour, last hour was $last_update")
 	# println("Integrated power from the last hour:")
 	# println(integrator.u[power_idx])
 	# println("Yesterdays mismatch for the last hour:")
-	# println(integrator.p.hl.mismatch_yesterday[last_hour,:])
+	# println(integrator.p.hl.mismatch_yesterday[last_update,:])
 	# println("Background power for the next hour:")
 	# println(integrator.p.hl.daily_background_power[hour, :])
 
-	integrator.p.hl.mismatch_yesterday[last_hour,:] .= integrator.u[power_idx]
+	integrator.p.hl.mismatch_yesterday[last_update,:] .= integrator.u[power_idx]
 	integrator.u[power_idx] .= 0.
 	integrator.u[power_abs_idx] .= 0.
 
 	# println("hour $hour")
-	integrator.p.hl.current_background_power .= integrator.p.hl.daily_background_power[hour, :]
+	integrator.p.hl.current_background_power .= integrator.p.hl.daily_background_power[updating_cycle, :]
 	# integrator.p.residual_demand = 0.1 * (0.5 + rand())
 	# reinit!(integrator, integrator.u, t0=integrator.t, erase_sol=true)
 
@@ -164,6 +169,14 @@ end
 
 
 function DailyUpdate_X(integrator)
+	#println("mismatch ", integrator.p.hl.daily_background_power)
+	#println("Q ", integrator.p.hl.Q)
+	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
+	#println("mismatch ", integrator.p.hl.daily_background_power)
+	nothing
+end
+
+function DailyUpdate_PD(integrator)
 	#println("mismatch ", integrator.p.hl.daily_background_power)
 	#println("Q ", integrator.p.hl.Q)
 	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
