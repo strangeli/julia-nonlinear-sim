@@ -180,7 +180,6 @@ function DailyUpdate_PD(integrator)
 	#println("mismatch ", integrator.p.hl.daily_background_power)
 	#println("Q ", integrator.p.hl.Q)
 	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
-	+ (integrator.p.hl.mismatch_yesterday[last_update,:] - mismatch_yesterday)
 	#println("mismatch ", integrator.p.hl.daily_background_power)
 	nothing
 end

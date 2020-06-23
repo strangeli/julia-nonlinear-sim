@@ -70,7 +70,7 @@ end
 	l_day = 3600*24 # DemCurve.l_day
 	l_hour = 3600 # DemCurve.update
 	update = l_hour/4 #/2 for half # DemCurve.update
-	n_updates_per_day=96 # l_day / update
+	n_updates_per_day=96 # 24 l_day / update
 	l_minute = 60 # DemCurve.l_minute
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=52,T_inv=1/0.05,kI=10)
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=525,T_inv=1/0.05,kI=0.005)
@@ -125,7 +125,7 @@ end
 #  demand
 ############################################
 
-struct demand_amp_var
+@everywhere struct demand_amp_var
 	demand
 end
 
@@ -191,9 +191,8 @@ Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]
 
 # kappa_lst = (0:0.01:2) ./ l_hour
 @everywhere begin
-	#kappa_lst = (0:.25:1.75) ./ update
-	kappa_lst = 0.75/ update
-	kappa = kappa_lst
+	kappa_lst = (0:.25:1.75) ./ update
+	kappa = kappa_lst[1]
 	num_monte = batch_size*length(kappa_lst)
 end
 
@@ -212,13 +211,12 @@ _compound_pars.coupling = 6 .* diagm(0=>ones(ne(graph_lst[1])))
 @everywhere begin
 	factor = 0. # 0.01*rand(compound_pars.D * compound_pars.N) #0.001 #0.00001
 	ic = factor .* ones(compound_pars.D * compound_pars.N)
-	#compound_pars.hl.update=update
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
-	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(),update),
+	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(), update),
 						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
-
 end
+
 
 monte_prob = EnsembleProblem(
 	ode_tl1,
@@ -237,29 +235,32 @@ hourly_energy = [p[10] for p in res.u]
 norm_energy_d = [p[11] for p in res.u]
 
 using LaTeXStrings
-#plot(mean(norm_energy_d[1],dims=2),legend=:bottomright, label = L"\kappa = 0\, h^{-1}", ytickfontsize=14,
-#               xtickfontsize=14, linestyle=:dot, margin=8Plots.mm,
-#    		   legendfontsize=14, linewidth=3,xaxis=("days [c]",font(14)), yaxis = ("2-norm of the error",font(14), left_margin=12Plots.mm)) #  ylims=(0,1e6)
-plot(mean(norm_energy_d[4],dims=2),legend=:bottomright, label = L"\kappa = 0.75\, h^{-1}", ytickfontsize=14,
-               xtickfontsize=14, linestyle=:dot, margin=8Plots.mm,
-    		   legendfontsize=14, linewidth=3,xaxis=("days [c]",font(14)), yaxis = ("2-norm of the error",font(14), left_margin=12Plots.mm))
-#plot!(mean(norm_energy_d[2],dims=2), label= L"\kappa = 0.25\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
-#plot!(mean(norm_energy_d[3],dims=2), label= L"\kappa = 0.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
-#plot!(mean(norm_energy_d[4],dims=2),label=  L"\kappa = 0.75\, h^{-1}", linewidth = 3, linestyle=:dash)
-#plot!(mean(norm_energy_d[5],dims=2), label= L"\kappa = 1\, h^{-1}", linewidth = 3, linestyle=:solid)
+using Plots
+using PGFPlotsX
+pgfplotsx()
+Plots.PGFPlotsXBackend()
+plot(mean(norm_energy_d[1],dims=2),legend=:outertopright, label = L"\alpha", ytickfontsize=14,
+               xtickfontsize=14, linestyle=:dot, margin=8Plots.mm,tex_output_standalone = true,
+    		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14))) #  ylims=(0,1e6) #, yaxis = ("2-norm of the error",font(14), left_margin=12Plots.mm)
+plot!(mean(norm_energy_d[2],dims=2), label= L"\kappa = 0.25\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+plot!(mean(norm_energy_d[3],dims=2), label= L"\kappa = 0.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
+plot!(mean(norm_energy_d[4],dims=2),label=  L"\kappa = 0.75\, h^{-1}", linewidth = 3, linestyle=:dash)
+plot!(mean(norm_energy_d[5],dims=2), label= L"\kappa = 1\, h^{-1}", linewidth = 3, linestyle=:solid)
 #title!("Error norm")
 savefig("$dir/20200319_kappa_Y6_hetero.png")
 
-#using LaTeXStrings
-#plot(mean(norm_energy_d[5],dims=2),legend=:topright, label = L"\kappa = 1\, h^{-1}", ytickfontsize=14,
-#               xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
-#    		   legendfontsize=13, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))  # ylims=(0,1e6)
-#plot!(mean(norm_energy_d[6],dims=2),label=  L"\kappa = 1.25\, h^{-1}", linewidth = 3, linestyle=:dash)
-#plot!(mean(norm_energy_d[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
-#plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
+using LaTeXStrings
+plot(mean(norm_energy_d[5],dims=2),legend=:topright, label = L"\kappa = 1\, h^{-1}", ytickfontsize=14,
+               xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
+    		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))  # ylims=(0,1e6)
+plot!(mean(norm_energy_d[6],dims=2),label=  "kappa = 1.25 h^{-1}", linewidth = 3, linestyle=:dash)
+plot!(mean(norm_energy_d[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
+plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
 #plot!(mean(norm_energy_d[9],dims=2), label= L"\kappa = 2 h^{-1}", linewidth = 3, linestyle=:dot)
 #title!("Error norm")
-#savefig("$dir/20200319_kappa2_Y6_hetero.png")
+savefig("$dir/20200319_kappa2_Y6_hetero.png")
 
 
 

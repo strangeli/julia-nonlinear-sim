@@ -174,8 +174,7 @@ module system_structs
 	# Monte Carlo functions
 	l_day = 3600*24 # DemCurve.l_day
 	l_hour = 3600 # DemCurve.update
-	update = l_hour/4 #/2 for half # DemCurve.update
-	n_updates_per_day=96
+
 	get_run(i, batch_size) = mod(i, batch_size)==0 ? batch_size : mod(i, batch_size)
 	get_batch(i, batch_size) = 1 + (i - 1) ÷ batch_size
 
@@ -185,19 +184,21 @@ module system_structs
 		run = get_run(i, batch_size)
 	    batch = get_batch(i, batch_size)
 
+		#update = l_hour/4 #/2 for half # DemCurve.update
+
 		prob.p.hl.daily_background_power .= 0.
 		prob.p.hl.current_background_power .= 0.
 		prob.p.hl.mismatch_yesterday .= 0.
-		prob.p.hl.update = update
-		#prob.p.hl.kappa = kappa_lst[batch]
-		prob.p.hl.kappa = kappa_lst
+		#prob.p.hl.update = update
+		prob.p.hl.kappa = kappa_lst[batch]
+		#prob.p.hl.kappa = kappa_lst
 
 		#prob.p.coupling = 800. .* diagm(0=>ones(ne(prob.p.graph)))
 
 		hourly_update = network_dynamics.Updating()
 
 		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
-			callback=CallbackSet(PeriodicCallback(hourly_update, update),
+			callback=CallbackSet(PeriodicCallback(hourly_update, prob.p.hl.update),
 								 PeriodicCallback(network_dynamics.DailyUpdate_X, 3600*24)))
 	end
 
@@ -213,17 +214,18 @@ module system_structs
 		#var_ld = observables.var_last_days(sol, freq_filter, sol.prob.tspan[2]/(24*3600))
 		var_ld = observables.var_last_days(sol, freq_filter, sol.prob.tspan[2]/(24*3600))
 	#	control_energy_abs = sol[energy_abs_filter,end]
+		#update = l_hour/4 #/2 for half # DemCurve.update
+
 		n_updates_per_day = Int(l_day/(sol.prob.p.hl.update))
 
 
 		hourly_energy = zeros(n_updates_per_day*num_days,N)
 		for i=1:n_updates_per_day*num_days
 			for j = 1:N
-				hourly_energy[i,j] = sol(i*update)[energy_filter[j]]
+				hourly_energy[i,j] = sol(i*sol.prob.p.hl.update)[energy_filter[j]]
 			end
 		end
-		sol.prob.update=update
-		n_updates_per_day = Int(l_day/update)
+
 		ILC_power = zeros(num_days,n_updates_per_day,N)
 		norm_energy_d = zeros(num_days,N)
 		for j = 1:N
