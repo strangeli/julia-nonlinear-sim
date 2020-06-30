@@ -191,9 +191,14 @@ Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]
 
 # kappa_lst = (0:0.01:2) ./ l_hour
 @everywhere begin
-	kappa_lst = (0:.25:1.75) ./ update
-	kappa = kappa_lst[1]
-	num_monte = batch_size*length(kappa_lst)
+	kappa_lst_s = (0:.25:1.75) ./ update
+	kappa = kappa_lst_s[1]
+	update_lst_s= 60. *[0. : 30. : 120. ]
+
+	kappa_lst=repeat( [kappa_lst_s] , inner =length(kappa_lst_s))
+	update_lst=repeat( [update_lst_s] ,outer=length(kappa_lst_s))
+
+	num_monte = length(update_lst)*length(kappa_lst)
 end
 
 _compound_pars = system_structs.compound_pars(N, low_layer_control, kappa, vc1, cover1, Q, update)
@@ -213,7 +218,7 @@ _compound_pars.coupling = 6 .* diagm(0=>ones(ne(graph_lst[1])))
 	ic = factor .* ones(compound_pars.D * compound_pars.N)
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
-	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(), update),
+	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(),update ),
 						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
 end
 
@@ -221,7 +226,8 @@ end
 monte_prob = EnsembleProblem(
 	ode_tl1,
 	output_func = (sol, i) -> system_structs.observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N),
-	prob_func = (prob,i,repeat) -> system_structs.prob_func_ic(prob,i,repeat, batch_size, kappa_lst, num_days),
+	prob_func = (prob,i,repeat) -> system_structs.prob_func_ic(prob, i, repeat, batch_size , kappa_lst, update_lst, num_days,update_lst_s,kappa_lst_s),
+
 #	reduction = (u, data, I) -> system_structs.reduction_ic(u, data, I, batch_size),
 	u_init = [])
 

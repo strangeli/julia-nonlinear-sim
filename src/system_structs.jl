@@ -179,7 +179,7 @@ module system_structs
 	get_batch(i, batch_size) = 1 + (i - 1) ÷ batch_size
 
 
-	function prob_func_ic(prob, i, repeat, batch_size, kappa_lst, num_days)
+	function prob_func_ic(prob, i, repeat, batch_size, kappa_lst, update_lst, num_days,update_lst_s,kappa_lst_s)
 		println("sim ", i)
 		run = get_run(i, batch_size)
 	    batch = get_batch(i, batch_size)
@@ -193,12 +193,15 @@ module system_structs
 		prob.p.hl.kappa = kappa_lst[batch]
 		#prob.p.hl.kappa = kappa_lst
 
+		prob.p.hl.update = update_lst[batch]
+
 		#prob.p.coupling = 800. .* diagm(0=>ones(ne(prob.p.graph)))
 
-		hourly_update = network_dynamics.Updating()
+		#hourly_update = network_dynamics.Updating()
+
 
 		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
-			callback=CallbackSet(PeriodicCallback(hourly_update, prob.p.hl.update),
+			callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(), prob.p.hl.update ),
 								 PeriodicCallback(network_dynamics.DailyUpdate_X, 3600*24)))
 	end
 
@@ -240,7 +243,7 @@ module system_structs
 				norm_energy_d[i,j] = norm(hourly_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
 			end
 		end
-
+kappa
 		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa,sol.prob.p.hl.update, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, hourly_energy, norm_energy_d), false)
 	end
 

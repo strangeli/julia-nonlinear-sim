@@ -130,7 +130,11 @@ end
 PeriodicCallback function acting on the `integrator` that is called every simulation hour (t = 1,2,3...).
 """
 function (hu::Updating)(integrator)
+	#integrator.p.hl.update=update_lst[batch]
+
 	n_updates_per_day = Int(l_day/integrator.p.hl.update)
+
+
 	updating_cycle  = mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1
 	last_update = mod(updating_cycle-2, n_updates_per_day) + 1
 
@@ -140,7 +144,7 @@ function (hu::Updating)(integrator)
 	# an array of arrays. Otherwise obscure errors follow. Therefore u[3...] is
 	# wrapped in [].
 
-	# append!(hu.integrated_control_power_history, [integrator.u[power_idx]])
+	# append!(hu.integrated_control_power_low_layer_controlhistory, [integrator.u[power_idx]])
 
 	# println("===========================")
 	# println("Starting hour $hour, last hour was $last_update")
@@ -181,6 +185,17 @@ function DailyUpdate_PD(integrator)
 	#println("Q ", integrator.p.hl.Q)
 	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
 	#println("mismatch ", integrator.p.hl.daily_background_power)
+    #	r = 10.0
+	#k = 0.3
+	#d = 0.8
+	#function control_loop!(integrator)
+	#    global a
+	#
+	#    p = integrator.u[1]
+	#    v = integrator.u[2]
+
+	#    a = k*(r-p) + d*(0.0-v)
+	#end
 	nothing
 end
 
