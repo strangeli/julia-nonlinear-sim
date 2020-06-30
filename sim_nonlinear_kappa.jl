@@ -226,7 +226,7 @@ end
 monte_prob = EnsembleProblem(
 	ode_tl1,
 	output_func = (sol, i) -> system_structs.observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N),
-	prob_func = (prob,i,repeat) -> system_structs.prob_func_ic(prob, i, repeat, batch_size , kappa_lst, update_lst, num_days,update_lst_s,kappa_lst_s),
+	prob_func = (prob,i,repeat) -> system_structs.prob_func_ic(prob, i, repeat, batch_size , kappa_lst, update_lst, num_days),
 
 #	reduction = (u, data, I) -> system_structs.reduction_ic(u, data, I, batch_size),
 	u_init = [])

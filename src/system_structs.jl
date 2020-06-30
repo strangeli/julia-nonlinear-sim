@@ -179,7 +179,7 @@ module system_structs
 	get_batch(i, batch_size) = 1 + (i - 1) ÷ batch_size
 
 
-	function prob_func_ic(prob, i, repeat, batch_size, kappa_lst, update_lst, num_days,update_lst_s,kappa_lst_s)
+	function prob_func_ic(prob, i, repeat, batch_size, kappa_lst, update_lst, num_days)
 		println("sim ", i)
 		run = get_run(i, batch_size)
 	    batch = get_batch(i, batch_size)
