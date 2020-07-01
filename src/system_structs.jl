@@ -220,10 +220,11 @@ module system_structs
 	#	control_energy_abs = sol[energy_abs_filter,end]
 		#update = l_hour/4 #/2 for half # DemCurve.update
 
-		@show n_updates_per_day = Int(l_day/(sol.prob.p.hl.update))
+		@show n_updates_per_day = Int(floor(l_day/sol.prob.p.hl.update))
 
 
-		@show hourly_energy = zeros(n_updates_per_day*num_days,N)
+
+		hourly_energy = zeros(n_updates_per_day*num_days,N)
 		for i=1:n_updates_per_day*num_days
 			for j = 1:N
 				hourly_energy[i,j] = sol(i*sol.prob.p.hl.update)[energy_filter[j]]
@@ -238,15 +239,12 @@ module system_structs
 
 		for i=2:num_days
 			for j = 1:N
-			     ILC_power[i,:,j] = sol.prob.p.hl.Q*(ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
-			end
-			for j = 1:N
 				norm_energy_d[i,j] = norm(hourly_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
 			end
 		end
 
 
-		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, hourly_energy, norm_energy_d,update), false)
+		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, hourly_energy, norm_energy_d,sol.prob.p.hl.update), false)
 	end
 
 
