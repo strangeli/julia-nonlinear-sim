@@ -190,10 +190,11 @@ module system_structs
 		prob.p.hl.current_background_power .= 0.
 		prob.p.hl.mismatch_yesterday .= 0.
 		#prob.p.hl.update = update
-		@show prob.p.hl.kappa = kappa_lst[batch][batch]
+		number= mod(batch,7)==0 ? 7 : mod(batch,7)
+		@show prob.p.hl.kappa = kappa_lst[number][number]
 		#prob.p.hl.kappa = kappa_lst
 
-		@show prob.p.hl.update = update_lst[batch][batch]
+		@show prob.p.hl.update = update_lst[number][number]
 
 		#prob.p.coupling = 800. .* diagm(0=>ones(ne(prob.p.graph)))
 
