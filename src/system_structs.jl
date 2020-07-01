@@ -179,10 +179,10 @@ module system_structs
 	get_batch(i, batch_size) = 1 + (i - 1) ÷ batch_size
 
 
-	function prob_func_ic(prob, i, repeat, batch_size, kappa_lst, update_lst, num_days)
+	function prob_func_ic(prob, i, repeat, batch_size, kappa_lst, update_lst, num_days,kappa_lst_s,update_lst_s)
 		println("sim ", i)
-		run = get_run(i, batch_size)
-	    batch = get_batch(i, batch_size)
+		@show run = get_run(i, batch_size)
+	    @show batch = get_batch(i, batch_size)
 
 		#update = l_hour/4 #/2 for half # DemCurve.update
 
@@ -190,10 +190,10 @@ module system_structs
 		prob.p.hl.current_background_power .= 0.
 		prob.p.hl.mismatch_yesterday .= 0.
 		#prob.p.hl.update = update
-		prob.p.hl.kappa = kappa_lst[batch]
+		@show prob.p.hl.kappa = kappa_lst[batch][batch]
 		#prob.p.hl.kappa = kappa_lst
 
-		prob.p.hl.update = update_lst[batch]
+		@show prob.p.hl.update = update_lst[batch][batch]
 
 		#prob.p.coupling = 800. .* diagm(0=>ones(ne(prob.p.graph)))
 
@@ -219,7 +219,7 @@ module system_structs
 	#	control_energy_abs = sol[energy_abs_filter,end]
 		#update = l_hour/4 #/2 for half # DemCurve.update
 
-		n_updates_per_day = Int(l_day/(sol.prob.p.hl.update))
+		@show n_updates_per_day = Int(l_day/(sol.prob.p.hl.update))
 
 
 		hourly_energy = zeros(n_updates_per_day*num_days,N)
@@ -237,7 +237,7 @@ module system_structs
 
 		for i=2:num_days
 			for j = 1:N
-				ILC_power[i,:,j] = sol.prob.p.hl.Q*(ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+				@show ILC_power[i,:,j] = sol.prob.p.hl.Q*(ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
 			end
 			for j = 1:N
 				norm_energy_d[i,j] = norm(hourly_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])

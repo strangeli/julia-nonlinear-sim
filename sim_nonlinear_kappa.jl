@@ -195,8 +195,8 @@ Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]
 	kappa = kappa_lst_s[1]
 	update_lst_s= 60. *[0. : 30. : 120. ]
 
-	kappa_lst=repeat(kappa_lst_s, inner =length(update_lst_s))
-	update_lst=repeat(update_lst_s,outer=length(kappa_lst))
+	kappa_lst=repeat(kappa_lst_s,inner =length(update_lst_s))
+	update_lst=repeat(update_lst_s,outer=(length(kappa_lst)/length(update_lst_s)))
 
 	num_monte = length(update_lst)*length(kappa_lst)
 end
