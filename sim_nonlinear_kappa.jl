@@ -191,12 +191,12 @@ Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]
 
 # kappa_lst = (0:0.01:2) ./ l_hour
 @everywhere begin
-	kappa_lst_s = (0:.25:1.75) ./ update
+	kappa_lst_s = (0:.25:1.75) ./ update_lst_s
 	kappa = kappa_lst_s[1]
 	update_lst_s= 60. *[0. : 30. : 120. ]
 
-	kappa_lst=repeat( [kappa_lst_s] , inner =length(kappa_lst_s))
-	update_lst=repeat( [update_lst_s] ,outer=length(kappa_lst_s))
+	kappa_lst=repeat(kappa_lst_s, inner =length(update_lst_s))
+	update_lst=repeat(update_lst_s,outer=length(kappa_lst))
 
 	num_monte = length(update_lst)*length(kappa_lst)
 end
@@ -226,7 +226,7 @@ end
 monte_prob = EnsembleProblem(
 	ode_tl1,
 	output_func = (sol, i) -> system_structs.observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N),
-	prob_func = (prob,i,repeat) -> system_structs.prob_func_ic(prob, i, repeat, batch_size , kappa_lst, update_lst, num_days),
+	prob_func = (prob,i,repeat) -> system_structs.prob_func_ic(prob, i, repeat, batch_size , kappa_lst, update_lst, num_days,kappa_lst_s,update_lst_s),
 
 #	reduction = (u, data, I) -> system_structs.reduction_ic(u, data, I, batch_size),
 	u_init = [])
