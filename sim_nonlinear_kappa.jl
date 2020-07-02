@@ -253,36 +253,34 @@ using Plotly
 x = view(update, 1:7)
 y = view(kappa, 1:4)
 z = view(mean(norm_energy_d),1:7,1:4)
-Plots.heatmap(x, y , z , c=:Blues )
-
-whiteblue = cgrad([:white, :blue])
-Plots.heatmap(x, y , z , c = :reds)
-Plots.heatmap( mean(norm_energy_d[8],dims=2), c=:oranges )
-savefig("00319_kappa2_Y6_hetero.png")
-annotate!( vec(tuple.((1:length(x))'.-0.5, (1:length(y)).-0.5, string.(z))) )
-
-plot!(mean(norm_energy_d[5],dims=2),legend=:topright, label = "kappa = 1", ytickfontsize=14,
+Plots.heatmap(x, y , z , ytickfontsize=14, ztickfontsize=14,, colorbar=true,
                xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
-    		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))  # ylims=(0,1e6)
-plot!(mean(norm_energy_d[6],dims=2),label=  "kappa = 1.25 h^{-1}", linewidth = 3, linestyle=:dash)
+    		   legendfontsize=8, linewidth=3,xaxis=("update",font(14)), yaxis=("kappa",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
+Plots.savefig("heatmap.png")
+using LaTeXStrings
+
+Plots.plot(mean(norm_energy_d[5],dims=2),legend=:topright, label = L"\kappa = 1\, h^{-1}", ytickfontsize=14,
+               xtickfontsize=14,tickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
+    		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))   # ylims=(0,1e6)
+plot!(mean(norm_energy_d[6],dims=2),label=  L"\kappa = 1.25\, h^{-1}", linewidth = 3, linestyle=:dash)
 plot!(mean(norm_energy_d[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
 plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
-savefig("$dir/20200319_kappa2_Y6_hetero.png")
+Plots.savefig("$dir/20200319_kappa_Y6_hetero.png")
 
 
 
 using LaTeXStrings
 
-plot!(mean(norm_energy_d[5],dims=2),legend=:topright, label = L"\kappa = 1\, h^{-1}", ytickfontsize=14,
+Plots.plot(mean(norm_energy_d[5],dims=2),legend=:topright, label = L"\kappa = 1\, h^{-1}", ytickfontsize=14,
                xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
     		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))  # ylims=(0,1e6)
-plot!(mean(norm_energy_d[6],dims=2),label=  "kappa = 1.25 h^{-1}", linewidth = 3, linestyle=:dash)
+plot!(mean(norm_energy_d[6],dims=2),label=   L"\kappa = 1.25\, h^{-1}", linewidth = 3, linestyle=:dash)
 plot!(mean(norm_energy_d[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
 plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
 
 #plot!(mean(norm_energy_d[9],dims=2), label= L"\kappa = 2 h^{-1}", linewidth = 3, linestyle=:dot)
 #title!("Error norm")
-savefig("$dir/20200319_kappa2_Y6_hetero.png")
+Plots.savefig("$dir/20200319_kappa2_Y6_hetero.png")
 
 
 
