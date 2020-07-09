@@ -132,9 +132,9 @@ PeriodicCallback function acting on the `integrator` that is called every simula
 function (hu::Updating)(integrator)
 	#integrator.p.hl.update=update_lst[batch]
 
-	n_updates_per_day = Int(floor(l_day/integrator.p.hl.update))
-	updating_cycle  = mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1
-	last_update = mod(updating_cycle-2, n_updates_per_day) + 1
+	n_updates_per_day = ((l_day/integrator.p.hl.update))
+	updating_cycle  = Int(floor(mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1))
+	last_update = Int(floor(mod(updating_cycle-2, n_updates_per_day) + 1))
 
 	power_idx = 3*integrator.p.N+1:4*integrator.p.N
 	power_abs_idx = 4*integrator.p.N+1:5*integrator.p.N
