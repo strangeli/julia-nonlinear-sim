@@ -190,7 +190,7 @@ module system_structs
 		prob.p.hl.current_background_power .= 0.
 		prob.p.hl.mismatch_yesterday .= 0.
 		#prob.p.hl.update = update
-		number= mod(batch,7)==0 ? 7 : mod(batch,7)
+		number= mod(batch,5)==0 ? 5 : mod(batch,5)
 		@show prob.p.hl.kappa = kappa_lst[number][number]
 		#prob.p.hl.kappa = kappa_lst
 

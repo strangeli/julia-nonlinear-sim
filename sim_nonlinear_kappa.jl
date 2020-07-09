@@ -191,8 +191,8 @@ Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]
 
 # kappa_lst = (0:0.01:2) ./ l_hour
 @everywhere begin
-	update_lst_s= 60. *[30. : 30. : 240. ]
-	kappa_lst_s = (0:.25:1.75) ./ update_lst_s
+	update_lst_s= 60. *[12. : 12. : 72. ]
+	kappa_lst_s = (0:.25:1.25) ./ update_lst_s
 	kappa = kappa_lst_s[1]
 
 
@@ -229,7 +229,7 @@ end
 monte_prob = EnsembleProblem(
 	ode_tl1,
 	output_func = (sol, i) -> system_structs.observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N),
-	prob_func = (prob,i,repeat) -> system_structs.prob_func_ic(prob, i, repeat, batch_size , kappa_lst, update_lst, num_days,kappa_lst_s,update_lst_s),
+	prob_func = (prob,i,repeat) -> system_structs.prob_func_ic(prob, i, repeat, batch_size, kappa_lst, update_lst, num_days,kappa_lst_s,update_lst_s),
 
 #	reduction = (u, data, I) -> system_structs.reduction_ic(u, data, I, batch_size),
 	u_init = [])
@@ -238,7 +238,6 @@ res = solve(monte_prob,
 					 Rodas4P(),
 					 trajectories=num_monte,
 					 batch_size=batch_size)
-
 
 kappa = [p[6] for p in res.u]
 update_energy = [p[10] for p in res.u]
@@ -277,6 +276,7 @@ Plots.plot(mean(norm_energy_d[5],dims=2),legend=:topright, label = L"\kappa = 1\
 plot!(mean(norm_energy_d[6],dims=2),label=   L"\kappa = 1.25\, h^{-1}", linewidth = 3, linestyle=:dash)
 plot!(mean(norm_energy_d[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
 plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
 
 #plot!(mean(norm_energy_d[9],dims=2), label= L"\kappa = 2 h^{-1}", linewidth = 3, linestyle=:dot)
 #title!("Error norm")

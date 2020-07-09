@@ -132,11 +132,11 @@ PeriodicCallback function acting on the `integrator` that is called every simula
 function (hu::Updating)(integrator)
 	#integrator.p.hl.update=update_lst[batch]
 
-	n_updates_per_day = ((l_day/integrator.p.hl.update))
-	updating_cycle  = Int(floor(mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1))
-	last_update = Int(floor(mod(updating_cycle-2, n_updates_per_day) + 1))
+	n_updates_per_day = Int(floor(l_day/integrator.p.hl.update))
+	updating_cycle  = mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1
+	@show last_update = mod(updating_cycle-2, n_updates_per_day) + 1
 
-	power_idx = 3*integrator.p.N+1:4*integrator.p.N
+	@show power_idx = 3*integrator.p.N+1:4*integrator.p.N
 	power_abs_idx = 4*integrator.p.N+1:5*integrator.p.N
 	# For the array  of arrays append to work correctly we need to give append!
 	# an array of arrays. Otherwise obscure errors follow. Therefore u[3...] is
@@ -153,7 +153,7 @@ function (hu::Updating)(integrator)
 	# println("Background power for the next hour:")
 	# println(integrator.p.hl.daily_background_power[hour, :])
 
-	integrator.p.hl.mismatch_yesterday[last_update,:] .= integrator.u[power_idx]
+	@show integrator.p.hl.mismatch_yesterday[last_update,:] .= integrator.u[power_idx]
 	integrator.u[power_idx] .= 0.
 	integrator.u[power_abs_idx] .= 0.
 
