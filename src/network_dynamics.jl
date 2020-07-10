@@ -153,6 +153,7 @@ function (hu::Updating)(integrator)
 	# println("Background power for the next hour:")
 	# println(integrator.p.hl.daily_background_power[hour, :])
 	integrator.p.hl.mismatch_yesterday[last_update,:] .= integrator.u[power_idx]
+	integrator.p.hl.mismatch_d_control[last_update,:] .= integrator.p.hl.mismatch_yesterday[last_update,:]
 	integrator.u[power_idx] .= 0.
 	integrator.u[power_abs_idx] .= 0.
 
@@ -168,6 +169,32 @@ function (hu::Updating)(integrator)
 end
 
 
+# function (hu::Updating_d)(integrator)
+# 	#integrator.p.hl.update=update_lst[batch]
+#
+# 	n_updates_per_day = Int(floor(l_day/integrator.p.hl.update))
+# 	integrator.t
+# 	updating_cycle  = Int(floor(mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1))
+# 	last_update = Int(floor(mod(updating_cycle-2, n_updates_per_day) + 1))
+#
+# 	power_idx = 3*integrator.p.N+1:4*integrator.p.N
+# 	power_abs_idx = 4*integrator.p.N+1:5*integrator.p.N
+#
+# 	integrator.p.hl.mismatch_yesterday[last_update,last_iteration] .= integrator.u[power_idx]
+# 	integrator.u[power_idx] .= 0.
+# 	integrator.u[power_abs_idx] .= 0.
+#
+# 	# println("hour $hour")
+# 	integrator.p.hl.current_background_power .= integrator.p.hl.daily_background_power[updating_cycle, :]
+# 	# integrator.p.residual_demand = 0.1 * (0.5 + rand()
+# 	# reinit!(integrator, integrator.u, t0=integrator.t, erase_sol=true)
+#
+# 	#now = copy(integrator.t)
+# 	#state = copy(integrator.u)
+# 	#reinit!(integrator, state, t0=now, erase_sol=true)
+# 	nothing
+# end
+
 
 function DailyUpdate_X(integrator)
 	#println("mismatch ", integrator.p.hl.daily_background_power)
@@ -180,18 +207,12 @@ end
 function DailyUpdate_PD(integrator)
 	#println("mismatch ", integrator.p.hl.daily_background_power)
 	#println("Q ", integrator.p.hl.Q)
-	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
-	#println("mismatch ", integrator.p.hl.daily_background_power)
-    #	r = 10.0
-	#k = 0.3
-	#d = 0.8
-	#function control_loop!(integrator)
-	#    global a
-	#
-	#    p = integrator.u[1]
-	#    v = integrator.u[2]
 
-	#    a = k*(r-p) + d*(0.0-v)
+	integrator.p.hl.daily_background_power = integrator.p.hl.Q * ( integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday
+	+integrator.p.hl.kappa *(integrator.p.hl.mismatch_yesterday - integrator.p.hl.mismatch_d_control) )
+
+	#println("mismatch ", integrator.p.hl.daily_background_power)
+
 	#end
 	nothing
 end

@@ -50,6 +50,7 @@ module system_structs
 		mismatch_yesterday#::Array{Float64, 2}
 		daily_background_power#::Array{Float64, 2} # 24xN vector with the background power for each hour.
 		current_background_power
+		mismatch_d_control
 		ilc_nodes
 		ilc_covers
 		Q
@@ -123,7 +124,7 @@ module system_structs
 		Q1 = filtfilt(a,u);#Markov Parameter
 		Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]);
 
-		higher_layer_control = ILCPars(kappa=0.35/update, mismatch_yesterday=zeros(n_updates_per_day, N), daily_background_power=zeros(n_updates_per_day, N), current_background_power=zeros(N), ilc_nodes=vc, ilc_covers=cover, Q=Q,update=update)
+		higher_layer_control = ILCPars(kappa=0.35/update, mismatch_yesterday=zeros(n_updates_per_day, N), daily_background_power=zeros(n_updates_per_day, N), current_background_power=zeros(N), ilc_nodes=vc, ilc_covers=cover, Q=Q,update=update,mismatch_d_control=zeros(n_updates_per_day, N) )
 		periodic_infeed = t -> zeros(N)
 		peak_demand = rand(N)
 		periodic_demand= t -> zeros(N)#peak_demand .* abs(sin(pi * t/24.))
@@ -145,7 +146,7 @@ module system_structs
 
 	function compound_pars(N, low_layer_control, kappa, ilc_nodes, ilc_covers, Q, update)
 		n_updates_per_day = Int(l_day/update)
-		higher_layer_control = ILCPars(kappa=kappa, mismatch_yesterday=zeros(n_updates_per_day, N), daily_background_power=zeros(n_updates_per_day, N), current_background_power=zeros(N),ilc_nodes=ilc_nodes, ilc_covers=ilc_covers, Q=Q, update=update)
+		higher_layer_control = ILCPars(kappa=kappa, mismatch_yesterday=zeros(n_updates_per_day, N), daily_background_power=zeros(n_updates_per_day, N), current_background_power=zeros(N),ilc_nodes=ilc_nodes, ilc_covers=ilc_covers, Q=Q, update=update,mismatch_d_control=zeros(n_updates_per_day, N))
 
 		periodic_infeed = t -> zeros(N)
 		periodic_demand= t -> zeros(N)
@@ -189,6 +190,8 @@ module system_structs
 		prob.p.hl.daily_background_power .= 0.
 		prob.p.hl.current_background_power .= 0.
 		prob.p.hl.mismatch_yesterday .= 0.
+		prob.p.hl.mismatch_d_control .= 0.
+
 		#prob.p.hl.update = update
 		number= mod(batch,5)==0 ? 5 : mod(batch,5)
 		@show prob.p.hl.kappa = kappa_lst[number][number]
@@ -203,7 +206,9 @@ module system_structs
 
 		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
 			callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(), prob.p.hl.update ),
-								 PeriodicCallback(network_dynamics.DailyUpdate_X, 3600*24)))
+								 PeriodicCallback(network_dynamics.DailyUpdate_PD, 3600*24)))
+
+
 	end
 
 

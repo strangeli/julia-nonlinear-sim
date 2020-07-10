@@ -208,6 +208,7 @@ _compound_pars = system_structs.compound_pars(N, low_layer_control, kappa, vc1, 
 _compound_pars.hl.daily_background_power .= 0
 _compound_pars.hl.current_background_power .= 0
 _compound_pars.hl.mismatch_yesterday .= 0.
+_compound_pars.hl.mismatch_d_control .= 0.
 _compound_pars.periodic_demand  = periodic_demand # t -> zeros(N) # periodic_demand
 _compound_pars.residual_demand = residual_demand # t -> zeros(N) # residual_demand
 _compound_pars.graph = graph_lst[1]
@@ -250,9 +251,9 @@ using Plots
 using Vega
 using Plotly
 
-x = view(update, 1:7)
+x = view(update, 1:5)
 y = view(kappa, 1:4)
-z = view(mean(norm_energy_d),1:7,1:4)
+z = view(mean(norm_energy_d),1:5,1:4)
 Plots.heatmap(x, y , z , ytickfontsize=14, ztickfontsize=14, colorbar=true,
                xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
     		   legendfontsize=8, linewidth=3,xaxis=("update",font(14)), yaxis=("kappa",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
