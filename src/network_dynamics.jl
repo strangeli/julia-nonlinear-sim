@@ -133,10 +133,10 @@ function (hu::Updating)(integrator)
 	#integrator.p.hl.update=update_lst[batch]
 
 	n_updates_per_day = Int(floor(l_day/integrator.p.hl.update))
-	updating_cycle  = mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1
-	@show last_update = mod(updating_cycle-2, n_updates_per_day) + 1
+	updating_cycle  = Int(floor(mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1))
+	last_update = Int(floor(mod(updating_cycle-2, n_updates_per_day) + 1))
 
-	@show power_idx = 3*integrator.p.N+1:4*integrator.p.N
+	power_idx = 3*integrator.p.N+1:4*integrator.p.N
 	power_abs_idx = 4*integrator.p.N+1:5*integrator.p.N
 	# For the array  of arrays append to work correctly we need to give append!
 	# an array of arrays. Otherwise obscure errors follow. Therefore u[3...] is
@@ -152,14 +152,13 @@ function (hu::Updating)(integrator)
 	# println(integrator.p.hl.mismatch_yesterday[last_update,:])
 	# println("Background power for the next hour:")
 	# println(integrator.p.hl.daily_background_power[hour, :])
-
-	@show integrator.p.hl.mismatch_yesterday[last_update,:] .= integrator.u[power_idx]
+	integrator.p.hl.mismatch_yesterday[last_update,:] .= integrator.u[power_idx]
 	integrator.u[power_idx] .= 0.
 	integrator.u[power_abs_idx] .= 0.
 
 	# println("hour $hour")
 	integrator.p.hl.current_background_power .= integrator.p.hl.daily_background_power[updating_cycle, :]
-	# integrator.p.residual_demand = 0.1 * (0.5 + rand())
+	# integrator.p.residual_demand = 0.1 * (0.5 + rand()
 	# reinit!(integrator, integrator.u, t0=integrator.t, erase_sol=true)
 
 	#now = copy(integrator.t)

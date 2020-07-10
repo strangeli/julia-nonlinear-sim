@@ -69,8 +69,8 @@ end
 @everywhere begin
 	l_day = 3600*24 # DemCurve.l_day
 	l_hour = 3600 # DemCurve.update
-	update = l_hour/4 #/2 for half # DemCurve.update
-	n_updates_per_day=Int(l_day/update) # 24 l_day / update
+	update = l_hour/5 #/2 for half # DemCurve.update
+	n_updates_per_day=Int(floor(l_day/update)) # 24 l_day / update
 	l_minute = 60 # DemCurve.l_minute
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=52,T_inv=1/0.05,kI=10)
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=525,T_inv=1/0.05,kI=0.005)
@@ -229,7 +229,7 @@ end
 monte_prob = EnsembleProblem(
 	ode_tl1,
 	output_func = (sol, i) -> system_structs.observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N),
-	prob_func = (prob,i,repeat) -> system_structs.prob_func_ic(prob, i, repeat, batch_size, kappa_lst, update_lst, num_days,kappa_lst_s,update_lst_s),
+	prob_func = (prob,i,repeat) -> system_structs.prob_func_ic(prob, i, repeat, batch_size , kappa_lst, update_lst, num_days,kappa_lst_s,update_lst_s),
 
 #	reduction = (u, data, I) -> system_structs.reduction_ic(u, data, I, batch_size),
 	u_init = [])
@@ -239,8 +239,9 @@ res = solve(monte_prob,
 					 trajectories=num_monte,
 					 batch_size=batch_size)
 
+
 kappa = [p[6] for p in res.u]
-update_energy = [p[10] for p in res.u]
+hourly_energy = [p[10] for p in res.u]
 norm_energy_d = [p[11] for p in res.u]
 update = [p[12] for p in res.u]
 
@@ -252,9 +253,10 @@ using Plotly
 x = view(update, 1:7)
 y = view(kappa, 1:4)
 z = view(mean(norm_energy_d),1:7,1:4)
-Plots.heatmap(x, y , z , ytickfontsize=14, ztickfontsize=14,colorbar=true,
+Plots.heatmap(x, y , z , ytickfontsize=14, ztickfontsize=14, colorbar=true,
                xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
     		   legendfontsize=8, linewidth=3,xaxis=("update",font(14)), yaxis=("kappa",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
+
 Plots.savefig("heatmap.png")
 using LaTeXStrings
 
@@ -277,16 +279,6 @@ plot!(mean(norm_energy_d[6],dims=2),label=   L"\kappa = 1.25\, h^{-1}", linewidt
 plot!(mean(norm_energy_d[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
 plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
 
-
 #plot!(mean(norm_energy_d[9],dims=2), label= L"\kappa = 2 h^{-1}", linewidth = 3, linestyle=:dot)
 #title!("Error norm")
 Plots.savefig("$dir/20200319_kappa2_Y6_hetero.png")
-
-
-
-# # never save the solutions INSIDE the git repo, they are too large, please make a folder solutions at the same level as the git repo and save them there
-# jldopen("../../solutions/sol_def_N4.jld2", true, true, true, IOStream) do file
-# 	file["sol1"] = sol1
-# end
-#
-# @save "../../solutions/sol_kp525_ki0005_N4_pn_de-in_Q.jld2" sol1
