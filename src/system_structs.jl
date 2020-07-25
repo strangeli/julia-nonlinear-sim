@@ -250,6 +250,9 @@ module system_structs
 
 
 		for i=2:num_days
+			#for j = 1:N
+			#	ILC_power[i,:,j] = sol.prob.p.hl.Q*(ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+			#end
 			for j = 1:N
 				ILC_power[i,:,j] =sol.prob.p.hl.Q* (ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]))
 			end
