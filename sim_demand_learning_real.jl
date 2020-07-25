@@ -210,30 +210,30 @@ end
 ######################################################################
 
 using Plots
-hourly_energy = zeros(24*num_days+1,N)
+update_energy = zeros(24*num_days+1,N)
 for i=1:24*num_days+1
 	for j = 1:N
-		hourly_energy[i,j] = sol1((i-1)*3600)[energy_filter[j]]
+		update_energy[i,j] = sol1((i-1)*3600)[energy_filter[j]]
 	end
 end
-plot(hourly_energy)
+plot(update_energy)
 
 ILC_power = zeros(num_days+2,24,N)
 norm_energy_d = zeros(num_days,N)
 mean_energy_d = zeros(num_days,N)
 
 for j = 1:N
-	ILC_power[2,:,j] = Q*(zeros(24,1) +  kappa*hourly_energy[1:24,j])
-	norm_energy_d[1,j] = norm(hourly_energy[1:24,j])
-	mean_energy_d[1,j] = mean(hourly_energy[1:24,j])
+	ILC_power[2,:,j] = Q*(zeros(24,1) +  kappa*update_energy[1:24,j])
+	norm_energy_d[1,j] = norm(update_energy[1:24,j])
+	mean_energy_d[1,j] = mean(update_energy[1:24,j])
 end
 
 
 for i=2:num_days
 	for j = 1:N
-		ILC_power[i+1,:,j] = Q*(ILC_power[i,:,j] +  kappa*hourly_energy[(i-1)*24+1:i*24,j])
-		norm_energy_d[i,j] = norm(hourly_energy[(i-1)*24+1:i*24,j])
-		mean_energy_d[i,j] = mean(hourly_energy[(i-1)*24+1:i*24,j])
+		ILC_power[i+1,:,j] = Q*(ILC_power[i,:,j] +  kappa*update_energy[(i-1)*24+1:i*24,j])
+		norm_energy_d[i,j] = norm(update_energy[(i-1)*24+1:i*24,j])
+		mean_energy_d[i,j] = mean(update_energy[(i-1)*24+1:i*24,j])
 	end
 end
 
@@ -254,7 +254,7 @@ using LaTeXStrings
 plot(1:num_days*24, ILC_power_hourly[1:24*num_days] , legend=:topleft, label=L"$ u_j^{ILC}$", ytickfontsize=14,
                xtickfontsize=18,
     		   legendfontsize=12, linewidth=3,xaxis=("time [h]",font(14)), yaxis=("normed power",font(14)))
-plot!(1:num_days*24+1,mean(hourly_energy, dims=2)/3600 , label=L"y^{c,h}", linewidth=3)
+plot!(1:num_days*24+1,mean(update_energy, dims=2)/3600 , label=L"y^{c,h}", linewidth=3)
 plot!(1:24*num_days, mean.(load_amp_hourly), label = "peak demand", linewidth=3)
 #xlabel!("hour h [h]")
 #ylabel!("normed quantities [a.u.]")
@@ -264,7 +264,7 @@ savefig("$dir/plots/real_demand_hourly_hetero.png")
 plot(1:3600:num_days*24*3600,  ILC_power_hourly[1:num_days*24]./ maximum(ILC_power_hourly), label=L"$P_{ILC, j}$", ytickfontsize=14,
                xtickfontsize=18,
     		   legendfontsize=10, linewidth=3,xaxis=("time [s]",font(14)), yaxis=("normed quantities [a.u.]",font(14)))
-plot!(1:3600:24*num_days*3600,mean(hourly_energy[1:num_days*24], dims=2) ./ maximum(hourly_energy), label=L"y_h",linewidth=3, linestyle=:dash)
+plot!(1:3600:24*num_days*3600,mean(update_energy[1:num_days*24], dims=2) ./ maximum(update_energy), label=L"y_h",linewidth=3, linestyle=:dash)
 dd = t->((periodic_demand(t) .+ residual_demand(t)))
 plot!(0:num_days*l_day, t -> dd(t)[1], label = "demand",linewidth=3, alpha=0.3)
 title!("Exemplary learning")

@@ -145,7 +145,7 @@ module system_structs
 	end
 
 	function compound_pars(N, low_layer_control, kappa, ilc_nodes, ilc_covers, Q, update)
-		n_updates_per_day = Int(l_day/update)
+		n_updates_per_day = Int(floor(l_day/update))
 		higher_layer_control = ILCPars(kappa=kappa, mismatch_yesterday=zeros(n_updates_per_day, N), daily_background_power=zeros(n_updates_per_day, N), current_background_power=zeros(N),ilc_nodes=ilc_nodes, ilc_covers=ilc_covers, Q=Q, update=update,mismatch_d_control=zeros(n_updates_per_day, N))
 
 		periodic_infeed = t -> zeros(N)
@@ -190,14 +190,16 @@ module system_structs
 		prob.p.hl.daily_background_power .= 0.
 		prob.p.hl.current_background_power .= 0.
 		prob.p.hl.mismatch_yesterday .= 0.
+
 		prob.p.hl.mismatch_d_control .= 0.
 
+
 		#prob.p.hl.update = update
-		number= mod(batch,5)==0 ? 5 : mod(batch,5)
-		@show prob.p.hl.kappa = kappa_lst[number][number]
+		number= mod(batch,6)==0 ? 6 : mod(batch,6)
+		@show prob.p.hl.kappa = kappa_lst[batch]
 		#prob.p.hl.kappa = kappa_lst
 
-		@show prob.p.hl.update = update_lst[number][number]
+		@show prob.p.hl.update = update_lst[batch]
 
 		#prob.p.coupling = 800. .* diagm(0=>ones(ne(prob.p.graph)))
 
@@ -207,13 +209,14 @@ module system_structs
 		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
 			callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(), prob.p.hl.update ),
 								 PeriodicCallback(network_dynamics.DailyUpdate_PD, 3600*24)))
-
+		#saved_values = SavedValues(Float64, Vector{Float64})
+		#cb = SavingCallback((u,t,integrator)->(tr(u),norm(u)), saved_values)
 
 	end
 
 
 
-	function observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N) # what should be extracted from one run
+	function observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N,Q1) # what should be extracted from one run
 		# sol.prob.callback.discrete_callbacks[1].affect!.f.integrated_control_power_history
 		omega_max = maximum(abs.(sol[freq_filter,:]))
 		ex = observables.frequency_exceedance(sol, freq_filter, freq_threshold)
@@ -224,35 +227,39 @@ module system_structs
 		var_ld = observables.var_last_days(sol, freq_filter, sol.prob.tspan[2]/(24*3600))
 	#	control_energy_abs = sol[energy_abs_filter,end]
 		#update = l_hour/4 #/2 for half # DemCurve.update
-
+		sol.prob.p.hl.mismatch_d_control .= sol.prob.p.hl.mismatch_yesterday
 		@show n_updates_per_day = Int(floor(l_day/sol.prob.p.hl.update))
+		#@show sol.prob.p.hl.mismatch_d_control=sol.prob.hl.mismatch_yesterday
 
-
-
-		hourly_energy = zeros(n_updates_per_day*num_days,N)
+		update_energy = zeros(n_updates_per_day*num_days,N)
 		for i=1:n_updates_per_day*num_days
 			for j = 1:N
-				hourly_energy[i,j] = sol(i*sol.prob.p.hl.update)[energy_filter[j]]
+				update_energy[i,j] = sol(i*sol.prob.p.hl.update)[energy_filter[j]]
 			end
 		end
 
 		ILC_power = zeros(num_days,n_updates_per_day,N)
 		norm_energy_d = zeros(num_days,N)
 		for j = 1:N
-			norm_energy_d[1,j] = norm(hourly_energy[1:n_updates_per_day,j])
+			#norm_energy_d[1,j] = norm(update_energy[1:n_updates_per_day,j])
+			norm_energy_d[1,j] = norm(update_energy[1:n_updates_per_day,j])/sol.prob.p.hl.update
 		end
+			#norm_energy_d[1,j] = norm(update_energy[1:n_updates_per_day,j])
+
+		sol.prob.p.hl.Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]);
+
 
 		for i=2:num_days
-			#for j = 1:N
-			#	ILC_power[i,:,j] = sol.prob.p.hl.Q*(ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
-			#end
 			for j = 1:N
-				norm_energy_d[i,j] = norm(hourly_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+				ILC_power[i,:,j] =sol.prob.p.hl.Q* (ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]))
+			end
+			for j = 1:N
+				norm_energy_d[i,j] = norm(update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/sol.prob.p.hl.update
 			end
 		end
 
 
-		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, hourly_energy, norm_energy_d,sol.prob.p.hl.update), false)
+		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, update_energy, norm_energy_d,sol.prob.p.hl.update), false)
 	end
 
 

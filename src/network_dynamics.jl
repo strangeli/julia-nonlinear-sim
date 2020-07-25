@@ -137,6 +137,9 @@ function (hu::Updating)(integrator)
 	last_update = Int(floor(mod(updating_cycle-2, n_updates_per_day) + 1))
 
 	power_idx = 3*integrator.p.N+1:4*integrator.p.N
+	power_idx_d = (3*integrator.p.N+1)-1:(4*integrator.p.N)-1
+
+
 	power_abs_idx = 4*integrator.p.N+1:5*integrator.p.N
 	# For the array  of arrays append to work correctly we need to give append!
 	# an array of arrays. Otherwise obscure errors follow. Therefore u[3...] is
@@ -145,7 +148,7 @@ function (hu::Updating)(integrator)
 	# append!(hu.integrated_control_power_low_layer_controlhistory, [integrator.u[power_idx]])
 
 	# println("===========================")
-	# println("Starting hour $hour, last hour was $last_update")
+	# println("Starting hour our, last hour was $last_update")
 	# println("Integrated power from the last hour:")
 	# println(integrator.u[power_idx])
 	# println("Yesterdays mismatch for the last hour:")
@@ -153,8 +156,8 @@ function (hu::Updating)(integrator)
 	# println("Background power for the next hour:")
 	# println(integrator.p.hl.daily_background_power[hour, :])
 	integrator.p.hl.mismatch_yesterday[last_update,:] .= integrator.u[power_idx]
-	integrator.p.hl.mismatch_d_control[last_update,:] .= integrator.p.hl.mismatch_yesterday[last_update,:]
 	integrator.u[power_idx] .= 0.
+	integrator.u[power_idx_d] .= 0.
 	integrator.u[power_abs_idx] .= 0.
 
 	# println("hour $hour")
@@ -207,7 +210,7 @@ end
 function DailyUpdate_PD(integrator)
 	#println("mismatch ", integrator.p.hl.daily_background_power)
 	#println("Q ", integrator.p.hl.Q)
-
+	integrator.p.hl.mismatch_d_control=integrator.p.hl.mismatch_yesterday
 	integrator.p.hl.daily_background_power = integrator.p.hl.Q * ( integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday
 	+integrator.p.hl.kappa *(integrator.p.hl.mismatch_yesterday - integrator.p.hl.mismatch_d_control) )
 

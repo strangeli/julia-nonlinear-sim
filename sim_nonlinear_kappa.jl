@@ -50,7 +50,7 @@ end
 
 @everywhere begin
 	N = 4
-	num_days =  20
+	num_days = 20
 	batch_size = 1
 end
 
@@ -191,17 +191,23 @@ Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]
 
 # kappa_lst = (0:0.01:2) ./ l_hour
 @everywhere begin
-	update_lst_s= 60. *[12. : 12. : 72. ]
-	kappa_lst_s = (0:.25:1.25) ./ update_lst_s
+	update_lst_s= 60. *(12. : 12. : 72. )
+	kappa_lst_s = (0:.25:1.25)
 	kappa = kappa_lst_s[1]
 
+	#kappa_lst=repeat(kappa_lst_s,inner =length(update_lst_s))
 
-	kappa_lst=repeat(kappa_lst_s,inner =length(update_lst_s))
+	update_lst=repeat(update_lst_s,inner=length(kappa_lst_s))
 
-	longueur=Int(length(kappa_lst)/length(update_lst_s))
+	#longueur=Int(length(kappa_lst)/length(update_lst_s))
+	longueur=Int(length(update_lst)/length(kappa_lst_s))
+	kappa_lst=repeat(kappa_lst_s,outer =longueur)
+
 	update_lst=repeat(update_lst_s,outer=longueur)
-
-	num_monte = length(update_lst)*length(kappa_lst)
+	for row in 1:length(kappa_lst)
+	        @show kappa_lst[row]=(kappa_lst[row] / update_lst[row])
+ 	end
+	num_monte = length(kappa_lst)
 end
 
 _compound_pars = system_structs.compound_pars(N, low_layer_control, kappa, vc1, cover1, Q, update)
@@ -218,6 +224,7 @@ _compound_pars.coupling = 6 .* diagm(0=>ones(ne(graph_lst[1])))
 
 
 @everywhere begin
+
 	factor = 0. # 0.01*rand(compound_pars.D * compound_pars.N) #0.001 #0.00001
 	ic = factor .* ones(compound_pars.D * compound_pars.N)
 	tspan = (0., num_days * l_day)
@@ -229,9 +236,8 @@ end
 
 monte_prob = EnsembleProblem(
 	ode_tl1,
-	output_func = (sol, i) -> system_structs.observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N),
+	output_func = (sol, i) -> system_structs.observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N,Q1),
 	prob_func = (prob,i,repeat) -> system_structs.prob_func_ic(prob, i, repeat, batch_size , kappa_lst, update_lst, num_days,kappa_lst_s,update_lst_s),
-
 #	reduction = (u, data, I) -> system_structs.reduction_ic(u, data, I, batch_size),
 	u_init = [])
 
@@ -242,7 +248,7 @@ res = solve(monte_prob,
 
 
 kappa = [p[6] for p in res.u]
-hourly_energy = [p[10] for p in res.u]
+update_energy = [p[10] for p in res.u]
 norm_energy_d = [p[11] for p in res.u]
 update = [p[12] for p in res.u]
 
@@ -250,13 +256,19 @@ using LaTeXStrings
 using Plots
 using Vega
 using Plotly
-
-x = view(update, 1:5)
+x = view(update, 1:4)
 y = view(kappa, 1:4)
-z = view(mean(norm_energy_d),1:5,1:4)
-Plots.heatmap(x, y , z , ytickfontsize=14, ztickfontsize=14, colorbar=true,
+
+#norm_energy_d_mean=zeros(length(update_lst))
+#for row in 1:length(update_lst)
+#		@show norm_energy_d_mean[row]=(mean(norm_energy_d[row]))
+#end
+
+z=view((mean(norm_energy_d)),1:4,1:4)
+Plots.heatmap(x, y , z , ztickfontsize=14, colorbar=true,xlims = (720,2880),ylims = (0.0,0.00026041666666666667),
                xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
     		   legendfontsize=8, linewidth=3,xaxis=("update",font(14)), yaxis=("kappa",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
+
 
 Plots.savefig("heatmap.png")
 using LaTeXStrings
