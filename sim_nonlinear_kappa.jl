@@ -259,7 +259,6 @@ using Plotly
 x = view(update, 1:4)
 y = view(kappa, 1:4)
 
-<<<<<<< HEAD
 #norm_energy_d_mean=zeros(length(update_lst))
 #for row in 1:length(update_lst)
 #		@show norm_energy_d_mean[row]=(mean(norm_energy_d[row]))
@@ -271,14 +270,6 @@ Plots.heatmap(x, y , z , ztickfontsize=14, colorbar=true,xlims = (720,2880),ylim
     		   legendfontsize=8, linewidth=3,xaxis=("update",font(14)), yaxis=("kappa",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
 
 
-=======
-x = view(update, 1:7)
-y = view(kappa, 1:4)
-z = view(mean(norm_energy_d),1:7,1:4)
-Plots.heatmap(x, y , z , ytickfontsize=14, ztickfontsize=14,, colorbar=true,
-               xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
-    		   legendfontsize=8, linewidth=3,xaxis=("update",font(14)), yaxis=("kappa",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
->>>>>>> 89f95f6afad77f66cb4c3a8b47d424fc45bf6108
 Plots.savefig("heatmap.png")
 using LaTeXStrings
 
@@ -304,8 +295,6 @@ plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth
 #plot!(mean(norm_energy_d[9],dims=2), label= L"\kappa = 2 h^{-1}", linewidth = 3, linestyle=:dot)
 #title!("Error norm")
 Plots.savefig("$dir/20200319_kappa2_Y6_hetero.png")
-<<<<<<< HEAD
-=======
 
 
 
@@ -315,4 +304,3 @@ Plots.savefig("$dir/20200319_kappa2_Y6_hetero.png")
 # end
 #
 # @save "../../solutions/sol_kp525_ki0005_N4_pn_de-in_Q.jld2" sol1
->>>>>>> 89f95f6afad77f66cb4c3a8b47d424fc45bf6108
