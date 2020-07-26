@@ -230,7 +230,7 @@ _compound_pars.coupling = 6 .* diagm(0=>ones(ne(graph_lst[1])))
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
 	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(),update ),
-						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
+						 PeriodicCallback(network_dynamics.DailyUpdate_PD, l_day)))
 end
 
 
