@@ -208,7 +208,7 @@ module system_structs
 
 		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
 			callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(), prob.p.hl.update ),
-								 PeriodicCallback(network_dynamics.DailyUpdate_X, 3600*24)))
+								 PeriodicCallback(network_dynamics.DailyUpdate_Pd2, 3600*24)))
 		#saved_values = SavedValues(Float64, Vector{Float64})
 		#cb = SavingCallback((u,t,integrator)->(tr(u),norm(u)), saved_values)
 
@@ -227,7 +227,7 @@ module system_structs
 		var_ld = observables.var_last_days(sol, freq_filter, sol.prob.tspan[2]/(24*3600))
 	#	control_energy_abs = sol[energy_abs_filter,end]
 		#update = l_hour/4 #/2 for half # DemCurve.update
-		sol.prob.p.hl.mismatch_d_control .= sol.prob.p.hl.mismatch_yesterday
+		#sol.prob.p.hl.mismatch_d_control .= sol.prob.p.hl.mismatch_yesterday
 		@show n_updates_per_day = Int(floor(l_day/sol.prob.p.hl.update))
 		#@show sol.prob.p.hl.mismatch_d_control=sol.prob.hl.mismatch_yesterday
 
@@ -272,7 +272,7 @@ module system_structs
 	    # data is the solution of the current batch
 	    # we obtain:
 		omega_max_abs = [dat[1] for dat in data] # max frequency
-	    	ex = [dat[2] for dat in data] # ex
+	    ex = [dat[2] for dat in data] # ex
 		energy = [dat[3] for dat in data] # working as array???
 		energy_abs = [dat[10] for dat in data]
 		#var_omega = [dat[4] for dat in data]

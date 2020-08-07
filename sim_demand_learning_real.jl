@@ -1,4 +1,3 @@
-
 begin
 	dir = @__DIR__
 	include("$dir/src/system_structs.jl")
@@ -198,7 +197,7 @@ savefig("$dir/plots/real_demand_winter_week.png")
 	ic = factor .* ones(compound_pars.D * compound_pars.N)
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
-	callback=CallbackSet(PeriodicCallback(network_dynamics.HourlyUpdate(), l_hour),
+	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(), l_hour),
 						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
 end
 
@@ -240,7 +239,7 @@ end
 ILC_power_agg = maximum(mean(ILC_power.^2,dims=3),dims=2)
 ILC_power_agg = mean(ILC_power,dims=2)
 ILC_power_agg_norm = norm(ILC_power)
-ILC_power_hourly = vcat(ILC_power[:,:,1]'...)
+ILC_power = vcat(ILC_power[:,:,1]'...)
 
 # load_amp = []
 # for i = 1:num_days
@@ -251,7 +250,7 @@ load_amp_hourly = [maximum.(dd(t)) for t in 1:3600:3600*24*num_days]
 using LaTeXStrings
 
 # hourly plotting
-plot(1:num_days*24, ILC_power_hourly[1:24*num_days] , legend=:topleft, label=L"$ u_j^{ILC}$", ytickfontsize=14,
+plot(1:num_days*24, ILC_power[1:24*num_days] , legend=:topleft, label=L"$ u_j^{ILC}$", ytickfontsize=14,
                xtickfontsize=18,
     		   legendfontsize=12, linewidth=3,xaxis=("time [h]",font(14)), yaxis=("normed power",font(14)))
 plot!(1:num_days*24+1,mean(update_energy, dims=2)/3600 , label=L"y^{c,h}", linewidth=3)
@@ -261,7 +260,7 @@ plot!(1:24*num_days, mean.(load_amp_hourly), label = "peak demand", linewidth=3)
 savefig("$dir/plots/real_demand_hourly_hetero.png")
 
 # second-wise
-plot(1:3600:num_days*24*3600,  ILC_power_hourly[1:num_days*24]./ maximum(ILC_power_hourly), label=L"$P_{ILC, j}$", ytickfontsize=14,
+plot(1:3600:num_days*24*3600,  ILC_power[1:num_days*24]./ maximum(ILC_power), label=L"$P_{ILC, j}$", ytickfontsize=14,
                xtickfontsize=18,
     		   legendfontsize=10, linewidth=3,xaxis=("time [s]",font(14)), yaxis=("normed quantities [a.u.]",font(14)))
 plot!(1:3600:24*num_days*3600,mean(update_energy[1:num_days*24], dims=2) ./ maximum(update_energy), label=L"y_h",linewidth=3, linestyle=:dash)

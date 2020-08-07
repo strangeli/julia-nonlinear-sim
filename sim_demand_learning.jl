@@ -168,15 +168,20 @@ begin
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
 	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(),update),
-						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
+						 PeriodicCallback(network_dynamics.DailyUpdate_Pd2, l_day)))
 end
 sol1 = solve(ode_tl1, Rodas4())
 
+#df = DataFrame(sol1)
+using CSV
+using JLD2
+#JLD2.@save "outputt.jld2" sol1
 
 #######################################################################
 #                               PLOTTING                             #
 ###################''''''''''''''''''''''''###################################################
 using Plots
+using DataFrames, StatsPlots
 
 update_energy = zeros(n_updates_per_day*num_days+1,N)
 for i=1:n_updates_per_day*num_days+1
@@ -184,8 +189,36 @@ for i=1:n_updates_per_day*num_days+1
 		update_energy[i,j] = sol1((i-1)*update)[energy_filter[j]]
 	end
 end
-plot(update_energy, title = "Update energy")
+
+plot(update_energy)
+using Images
+#img = load("$dir/plots/demand_seconds_hetero_update_energy.png")
+#plot(load("$dir/plots/demand_seconds_hetero_update_energy.png"))
+#p1 = plot()
+
+
+#plot!(update_energy[:,1] , title = "Update energy")
+#plot!(convert(Matrix, data[:,1:4])[:,1] )
+#@df df plot(:update_energy)
 savefig("$dir/plots/demand_seconds_hetero_update_energy.png")
+#hdf5() #Select HDF5-Plots "backend"
+#p = plot(update_energy[:,1] , title = "Update energy") #Construct plot as usual#
+#Plots.hdf5plot_write(p, "plotsave.hdf5")
+#plot() #Must first select some backend
+#pread = Plots.hdf5plot_read("plotsave.hdf5")
+#plot!(update_energy[:,1] , title = "Update energy")
+#savefig("hour.png")
+
+#Then, write to .hdf5 file:
+
+#After you re-open a new Julia session, you can re-read the .hdf5 plot:
+
+#df = DataFrame(update_energy)
+#CSV.write("update_energy.csv",df)
+#data = CSV.read("update_energy.csv")
+
+
+
 
 ILC_power = zeros(num_days+2,n_updates_per_day,N)
 for j = 1:N
@@ -203,7 +236,6 @@ for i=2:num_days
 		norm_energy_d[i,j] = norm(update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
 	end
 end
-
 #ILC_power_agg = maximum(mean(ILC_power.^2,dims=3),dims=2)
 ILC_power_agg = [norm(mean(ILC_power,dims=3)[d,:]) for d in 1:num_days+2]
 ILC_power_update_mean = vcat(mean(ILC_power,dims=3)[:,:,1]'...)
@@ -230,6 +262,17 @@ plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_update
     		   legendfontsize=10, linewidth=3, yaxis=("normed power",font(14)),legend=false, lc =:black, margin=5Plots.mm)
 ylims!(-0.7,1.5)
 title!(L"j = 1")
+
+
+#df = DataFrame(update_energy)
+#CSV.write("ILC_power_update_mean_node.csv",df)
+#ILC_power_update_mean_node_csv = CSV.read("ILC_power_update_mean_node.csv")
+#plot(ILC_power_update_mean_node[:,1] , title = "Update energy")
+#plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_updates_per_day], label=latexstring("\$u_$node^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
+#               xtickfontsize=14,
+#    		   legendfontsize=10, linewidth=3, yaxis=("normed power",font(14)),legend=false, lc =:black, margin=5Plots.mm)
+
+
 savefig("$dir/plots/demand_seconds_Y$(coupfact)_node_$(node)_hetero_update_half_hour.png")
 
 node = 2

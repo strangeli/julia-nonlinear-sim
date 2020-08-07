@@ -131,6 +131,8 @@ PeriodicCallback function acting on the `integrator` that is called every simula
 """
 function (hu::Updating)(integrator)
 	#integrator.p.hl.update=update_lst[batch]
+	println("sim ")
+
 
 	n_updates_per_day = Int(floor(l_day/integrator.p.hl.update))
 	updating_cycle  = Int(floor(mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1))
@@ -156,12 +158,14 @@ function (hu::Updating)(integrator)
 	# println("Background power for the next hour:")
 	# println(integrator.p.hl.daily_background_power[hour, :])
 	integrator.p.hl.mismatch_yesterday[last_update,:] .= integrator.u[power_idx]
+	integrator.p.hl.mismatch_d_control[updating_cycle,:] .= integrator.u[power_idx]
 	integrator.u[power_idx] .= 0.
 	integrator.u[power_idx_d] .= 0.
 	integrator.u[power_abs_idx] .= 0.
 
 	# println("hour $hour")
 	integrator.p.hl.current_background_power .= integrator.p.hl.daily_background_power[updating_cycle, :]
+
 	# integrator.p.residual_demand = 0.1 * (0.5 + rand()
 	# reinit!(integrator, integrator.u, t0=integrator.t, erase_sol=true)
 
@@ -208,23 +212,21 @@ function DailyUpdate_X(integrator)
 end
 
 function DailyUpdate_PD(integrator)
-	#println("mismatch ", integrator.p.hl.daily_background_power)
-	#println("Q ", integrator.p.hl.Q)
-	println("sim ")
 
-
-  	integrator.p.hl.daily_background_power = integrator.p.hl.Q * ( integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday
+    integrator.p.hl.daily_background_power = integrator.p.hl.Q * ( integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday
 	+integrator.p.hl.kappa *(integrator.p.hl.mismatch_yesterday - integrator.p.hl.mismatch_d_control) )
 
 	 integrator.p.hl.mismatch_d_control=integrator.p.hl.mismatch_yesterday
-
-
-
-#println("mismatch ", integrator.p.hl.daily_background_power)
-
-
-	#end
 	nothing
 end
+
+function DailyUpdate_Pd2(integrator)
+	integrator.p.hl.daily_background_power = integrator.p.hl.Q * ( integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_d_control
+    +integrator.p.hl.kappa *(integrator.p.hl.mismatch_d_control -integrator.p.hl.mismatch_yesterday ) )
+
+	nothing
+end
+
+
 
 end
