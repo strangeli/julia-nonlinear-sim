@@ -172,6 +172,17 @@ begin
 end
 sol1 = solve(ode_tl1, Rodas4())
 
+
+df = DataFrame(kappa_pd2 = [p[6] for p in sol1.u] ,
+			   update_energy_pd2 = [p[10] for p in sol1.u],
+			   norm_energy_d_pd2 = [p[11] for p in sol1.u],
+			   update_pd2 = [p[12] for p in sol1.u])
+CSV.write("pd2.csv",df)
+data = CSV.read("pd2.csv")
+
+
+
+
 #df = DataFrame(sol1)
 using CSV
 using JLD2
@@ -212,12 +223,6 @@ savefig("$dir/plots/demand_seconds_hetero_update_energy.png")
 #Then, write to .hdf5 file:
 
 #After you re-open a new Julia session, you can re-read the .hdf5 plot:
-
-#df = DataFrame(update_energy)
-#CSV.write("update_energy.csv",df)
-#data = CSV.read("update_energy.csv")
-
-
 
 
 ILC_power = zeros(num_days+2,n_updates_per_day,N)
