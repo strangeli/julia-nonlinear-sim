@@ -161,6 +161,7 @@ compound_pars.graph = graph
 coupfact= 6.
 compound_pars.coupling = coupfact .* diagm(0=>ones(ne(graph)))
 
+using Pandas
 
 begin
 	factor = 0#0.01*rand(compound_pars.D * compound_pars.N)#0.001#0.00001
@@ -168,15 +169,14 @@ begin
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
 	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(),update),
-						 PeriodicCallback(network_dynamics.DailyUpdate_Pd2, l_day)))
+						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
 end
 sol1 = solve(ode_tl1, Rodas4())
 
 
-df = DataFrame(kappa_pd2 = [p[6] for p in sol1.u] ,
-			   update_energy_pd2 = [p[10] for p in sol1.u],
-			   norm_energy_d_pd2 = [p[11] for p in sol1.u],
-			   update_pd2 = [p[12] for p in sol1.u])
+df = DataFrame(t=sol1.t , u=sol1.u)
+
+
 CSV.write("pd2.csv",df)
 data = CSV.read("pd2.csv")
 
@@ -188,7 +188,7 @@ using CSV
 using JLD2
 #JLD2.@save "outputt.jld2" sol1
 
-#######################################################################
+##################### [3.5841198212278796e-10, 3.078381669806953e-10, -7.730920518542944e-12, 3.5113574636468243e-10, 4.18391402683452e-6, 3.5993826772601687e-6, -9.03894389117365e-8, 4.10344664907011e-6, -8.959660667241752e-9, -6.840813496031148e-9, 1.6447769689790595e-10, -8.16593676270488e-9, -1.4336530395777753e-7, -3.3862588282699924e-8, 7.731014271411215e-10, -7.022761484130914e-8, 1.3708213968165875e-7, 3.2382926029415346e-8, 7.731014271411215e-10, 6.715593233297654e-8]##################################################
 #                               PLOTTING                             #
 ###################''''''''''''''''''''''''###################################################
 using Plots
@@ -201,7 +201,15 @@ for i=1:n_updates_per_day*num_days+1
 	end
 end
 
+update_energy_pd2 = zeros(n_updates_per_day*num_days+1,N)
+for i=1:n_updates_per_day*num_days+1
+	for j = 1:N
+		update_energy_pd2[i,j] = df.u[df.t .==(i-1)*update][1][energy_filter[j]]
+	end
+end
+
 plot(update_energy)
+plot!(update_energy_pd2)
 using Images
 #img = load("$dir/plots/demand_seconds_hetero_update_energy.png")
 #plot(load("$dir/plots/demand_seconds_hetero_update_energy.png"))
@@ -241,6 +249,28 @@ for i=2:num_days
 		norm_energy_d[i,j] = norm(update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
 	end
 end
+
+
+
+ILC_power_pd2 = zeros(num_days+2,n_updates_per_day,N)
+for j = 1:N
+	ILC_power_pd2[2,:,j] = Q*(zeros(n_updates_per_day,1) +  kappa*update_energy_pd2[1:n_updates_per_day,j])
+end
+norm_energy_d_pd2 = zeros(num_days,N)
+for j = 1:N
+	norm_energy_d_pd2[1,j] = norm(update_energy_pd2[1:n_updates_per_day,j])
+end
+
+
+for i=2:num_days
+	for j = 1:N
+		ILC_power_pd2[i+1,:,j] = Q*(ILC_power_pd2[i,:,j] +  kappa*update_energy_pd2[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+		norm_energy_d_pd2[i,j] = norm(update_energy_pd2[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+	end
+end
+
+
+
 #ILC_power_agg = maximum(mean(ILC_power.^2,dims=3),dims=2)
 ILC_power_agg = [norm(mean(ILC_power,dims=3)[d,:]) for d in 1:num_days+2]
 ILC_power_update_mean = vcat(mean(ILC_power,dims=3)[:,:,1]'...)
@@ -254,6 +284,10 @@ norm_update_energy = [norm(update_energy[h,:]) for h in 1:n_updates_per_day*num_
 
 
 using LaTeXStrings
+#df = DataFrame(kappa_pd2 = [p[6] for p in sol1.u] ,
+#			   update_energy_pd2 = [p[10] for p in sol1.u],
+#			   norm_energy_d_pd2 = [p[11] for p in sol1.u],
+#			   update_pd2 = [p[12] for p in sol1.u])
 
 # NODE WISE second-wisenode = 1
 node = 1
@@ -261,7 +295,12 @@ p1 = plot()
 ILC_power_update_mean_node = vcat(ILC_power[:,:,node]'...)
 dd = t->((periodic_demand(t) .+ residual_demand(t)))
 plot!(0:num_days*l_day, t -> dd(t)[node], alpha=0.2, label = latexstring("P^d_$node"),linewidth=3, linestyle=:dot)
+
+
 plot!(1:update:24*num_days*3600,update_energy[1:num_days*n_updates_per_day,node]./update, label=latexstring("y_$node^{c,h}"),linewidth=3) #, linestyle=:dash)
+
+plot!(1:update:24*num_days*3600,update_energy_pd2[1:num_days*n_updates_per_day,node]./update, label=latexstring("y_$node^{c,h}"),linewidth=3) #, linestyle=:dash)
+
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_updates_per_day], label=latexstring("\$u_$node^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
                xtickfontsize=14,
     		   legendfontsize=10, linewidth=3, yaxis=("normed power",font(14)),legend=false, lc =:black, margin=5Plots.mm)
