@@ -162,7 +162,7 @@ coupfact= 6.
 compound_pars.coupling = coupfact .* diagm(0=>ones(ne(graph)))
 
 #using Pandas
-using DataFrames, StatsPlots , StringEncodings
+using DataFrames, StatsPlots , StringEncodings , DataFramesMeta
 
 begin
 	factor = 0#0.01*rand(compound_pars.D * compound_pars.N)#0.001#0.00001
@@ -186,8 +186,13 @@ CSV.write("pd2t.csv",df_t)
 # CSV.write("pd_test.csv",df_sol)
 # daten_test = CSV.read("pd_test.csv")
 
-daten = CSV.read("pd2u.csv"; header=false , transpose=true)
+frames = CSV.read("pd2u.csv"; header=false )
+tab=[frames.Column2,frames.Column3,frames.Column4,frames.Column5,frames.Column6,frames.Column7,frames.Column8,frames.Column9,frames.Column10,frames.Column11,frames.Column12,frames.Column13,frames.Column14,frames.Column15,frames.Column16,frames.Column17,frames.Column18,frames.Column19,frames.Column20,frames.Column21]
+
 daten_t = CSV.read("pd2t.csv" )
+frames=hcat(daten_t,daten)
+CSV.write("pd2.csv",frames)
+dfk=DataFrame(t=frames.t , u=tab)
 #CSV.File(open(read, "pd2.csv", enc"ISO-8859-1")) |> DataFrame
 #daten_num = [parse(Float64, ss) for ss in split(daten.u)]
 
@@ -196,7 +201,7 @@ daten_t = CSV.read("pd2t.csv" )
 
 #df = DataFrame(sol1)
 using CSV
-using JLD2
+using JLD2 , Pandas
 #JLD2.@save "outputt.jld2" sol1
 
 ##################### [3.5841198212278796e-10, 3.078381669806953e-10, -7.730920518542944e-12, 3.5113574636468243e-10, 4.18391402683452e-6, 3.5993826772601687e-6, -9.03894389117365e-8, 4.10344664907011e-6, -8.959660667241752e-9, -6.840813496031148e-9, 1.6447769689790595e-10, -8.16593676270488e-9, -1.4336530395777753e-7, -3.3862588282699924e-8, 7.731014271411215e-10, -7.022761484130914e-8, 1.3708213968165875e-7, 3.2382926029415346e-8, 7.731014271411215e-10, 6.715593233297654e-8]##################################################
