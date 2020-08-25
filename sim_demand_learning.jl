@@ -50,6 +50,7 @@ begin
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=[0.005; 0.5; 5; 500]) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=[0.002; 0.2; 2; 20],kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=repeat([0.005], inner=N)) # different for each node, change array
 	kappa =(1.0 / update) #*2 for update half
+	empty = false
 end
 
 ############################################
@@ -186,18 +187,22 @@ CSV.write("pd2t.csv",df_t)
 # CSV.write("pd_test.csv",df_sol)
 # daten_test = CSV.read("pd_test.csv")
 
-frames = CSV.read("pd2u.csv"; header=false )
-tab=[frames.Column2,frames.Column3,frames.Column4,frames.Column5,frames.Column6,frames.Column7,frames.Column8,frames.Column9,frames.Column10,frames.Column11,frames.Column12,frames.Column13,frames.Column14,frames.Column15,frames.Column16,frames.Column17,frames.Column18,frames.Column19,frames.Column20,frames.Column21]
+daten_u = CSV.read("pd2u.csv" )
+#tab=[frames.Column2,frames.Column3,frames.Column4,frames.Column5,frames.Column6,frames.Column7,frames.Column8,frames.Column9,frames.Column10,frames.Column11,frames.Column12,frames.Column13,frames.Column14,frames.Column15,frames.Column16,frames.Column17,frames.Column18,frames.Column19,frames.Column20,frames.Column21]
+#tab2=[frames.x1,frames.x2,frames.x3,frames.x4,frames.x5,frames.x6,frames.x7,frames.x8,frames.x9,frames.x10,frames.Column11,frames.Column12,frames.Column13,frames.Column14,frames.Column15,frames.Column16,frames.Column17,frames.Column18,frames.Column19,frames.Column20,frames.Column21]
 
-daten_t = CSV.read("pd2t.csv" )
-frames=hcat(daten_t,daten)
+daten_t = CSV.read("pd2t.csv"; header=false , transpose =true )
+deletecols!(daten_t, :Column1)
+#daten_t=daten_t[:,2:37223]
+frames=hcat(daten_t,daten_u)
 CSV.write("pd2.csv",frames)
 dfk=DataFrame(t=frames.t , u=tab)
 #CSV.File(open(read, "pd2.csv", enc"ISO-8859-1")) |> DataFrame
 #daten_num = [parse(Float64, ss) for ss in split(daten.u)]
 
 
-
+names!(daten_t, [Symbol("$i") for i in 1:size(df,2)])
+names!(daten_u, [Symbol("$i") for i in 1:size(df,2)])
 
 #df = DataFrame(sol1)
 using CSV
@@ -216,12 +221,28 @@ for i=1:n_updates_per_day*num_days+1
 	end
 end
 
+
+
 update_energy_pd2 = zeros(n_updates_per_day*num_days+1,N)
 for i=1:n_updates_per_day*num_days+1
 	for j = 1:N
-		update_energy_pd2[i,j] = daten[daten_t.t .==(i-1)*update][1][energy_filter[j]]
+		for k in 1:size(daten_t,2)
+				  if (daten_t[k][1] ==(i-1)*update)
+					update_energy_pd2[i,j] =   daten_u[k][energy_filter[j]]
+				  end
+		 end
 	end
 end
+
+empty = false
+for k in 1:size(daten_t,2)
+		   if ((daten_t[k][1] ==(2-1)*update)&& (empty == true ))
+				   @show daten_u[k][energy_filter[1]]
+				   empty= false
+		   else
+			   	   empty = true
+		   end
+ end
 
 plot(update_energy)
 plot!(update_energy_pd2)
