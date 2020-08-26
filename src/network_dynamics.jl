@@ -147,16 +147,6 @@ function (hu::Updating)(integrator)
 	# an array of arrays. Otherwise obscure errors follow. Therefore u[3...] is
 	# wrapped in [].
 
-	# append!(hu.integrated_control_power_low_layer_controlhistory, [integrator.u[power_idx]])
-
-	# println("===========================")
-	# println("Starting hour our, last hour was $last_update")
-	# println("Integrated power from the last hour:")
-	# println(integrator.u[power_idx])
-	# println("Yesterdays mismatch for the last hour:")
-	# println(integrator.p.hl.mismatch_yesterday[last_update,:])
-	# println("Background power for the next hour:")
-	# println(integrator.p.hl.daily_background_power[hour, :])
 	integrator.p.hl.mismatch_yesterday[last_update,:] .= integrator.u[power_idx]
 	integrator.p.hl.mismatch_d_control[updating_cycle,:] .= integrator.u[power_idx]
 	integrator.u[power_idx] .= 0.
@@ -174,6 +164,30 @@ function (hu::Updating)(integrator)
 	#reinit!(integrator, state, t0=now, erase_sol=true)
 	nothing
 end
+function DailyUpdate_Pd2(integrator)
+	integrator.p.hl.daily_background_power = integrator.p.hl.Q * ( integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_d_control
+    +integrator.p.hl.kappa *(integrator.p.hl.mismatch_d_control -integrator.p.hl.mismatch_yesterday ) )
+
+	nothing
+end
+
+function DailyUpdate_X(integrator)
+	#println("mismatch ", integrator.p.hl.daily_background_power)
+	#println("Q ", integrator.p.hl.Q)
+	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
+	#println("mismatch ", integrator.p.hl.daily_background_power)
+	nothing
+end
+
+function DailyUpdate_PD(integrator)
+
+    integrator.p.hl.daily_background_power = integrator.p.hl.Q * ( integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday
+	+integrator.p.hl.kappa *(integrator.p.hl.mismatch_yesterday - integrator.p.hl.mismatch_d_control) )
+
+	 integrator.p.hl.mismatch_d_control=integrator.p.hl.mismatch_yesterday
+	nothing
+end
+
 
 
 # function (hu::Updating_d)(integrator)
@@ -203,29 +217,8 @@ end
 # end
 
 
-function DailyUpdate_X(integrator)
-	#println("mismatch ", integrator.p.hl.daily_background_power)
-	#println("Q ", integrator.p.hl.Q)
-	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
-	#println("mismatch ", integrator.p.hl.daily_background_power)
-	nothing
-end
 
-function DailyUpdate_PD(integrator)
 
-    integrator.p.hl.daily_background_power = integrator.p.hl.Q * ( integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday
-	+integrator.p.hl.kappa *(integrator.p.hl.mismatch_yesterday - integrator.p.hl.mismatch_d_control) )
-
-	 integrator.p.hl.mismatch_d_control=integrator.p.hl.mismatch_yesterday
-	nothing
-end
-
-function DailyUpdate_Pd2(integrator)
-	integrator.p.hl.daily_background_power = integrator.p.hl.Q * ( integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_d_control
-    +integrator.p.hl.kappa *(integrator.p.hl.mismatch_d_control -integrator.p.hl.mismatch_yesterday ) )
-
-	nothing
-end
 
 
 

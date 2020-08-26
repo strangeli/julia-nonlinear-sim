@@ -208,7 +208,7 @@ module system_structs
 
 		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
 			callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(), prob.p.hl.update ),
-								 PeriodicCallback(network_dynamics.DailyUpdate_X, 3600*24)))
+								 PeriodicCallback(network_dynamics.DailyUpdate_Pd2, 3600*24)))
 		#saved_values = SavedValues(Float64, Vector{Float64})
 		#cb = SavingCallback((u,t,integrator)->(tr(u),norm(u)), saved_values)
 
