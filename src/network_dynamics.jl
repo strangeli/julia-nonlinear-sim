@@ -153,6 +153,7 @@ function (hu::Updating)(integrator)
 	integrator.u[power_idx_d] .= 0.
 	integrator.u[power_abs_idx] .= 0.
 
+	@show length(integrator.p.hl.mismatch_yesterday)
 	# println("hour $hour")
 	integrator.p.hl.current_background_power .= integrator.p.hl.daily_background_power[updating_cycle, :]
 
@@ -174,7 +175,9 @@ end
 function DailyUpdate_X(integrator)
 	#println("mismatch ", integrator.p.hl.daily_background_power)
 	#println("Q ", integrator.p.hl.Q)
-	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
+	#integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
+	integrator.p.hl.daily_background_power = integrator.p.hl.Q * ( integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_d_control )
+
 	#println("mismatch ", integrator.p.hl.daily_background_power)
 	nothing
 end

@@ -170,7 +170,7 @@ begin
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
 	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(),update),
-						 PeriodicCallback(network_dynamics.DailyUpdate_Pd2, l_day)))
+						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
 end
 sol1 = solve(ode_tl1, Rodas4())
 
@@ -178,7 +178,6 @@ sol1 = solve(ode_tl1, Rodas4())
 using Dates , GraphIO
 date = Dates.Date(Dates.now())
 
-#JLD2.@save "function.jld" sol1.t
 
 #jldopen("$dir/solutions/$(date)/expI_sol_new.jld2", true, true, true, IOStream) do file
 #	file["t"] = sol1.t
@@ -186,7 +185,7 @@ date = Dates.Date(Dates.now())
 #end
 
 #load("$dir/solutions/$(date)/expI_sol_new.jld2")
-f = jldopen("$dir/solutions/$(date)/expI_sol_new.jld2", "r")  # open read-only (default)
+f = jldopen("$dir/solutions/2020-08-26/expI_sol_new.jld2", "r")  # open read-only (default)
 
 
 #graph_dict = Dict("g$i"=> Graph(sol1.u[i][5]) for i = 1:length(sol1))
@@ -275,8 +274,8 @@ for i=1:n_updates_per_day*num_days+1
 #		   end
 #end
 
-plot(update_energy)[1]
-plot!(update_energy_pd2)[1]
+Plots.plot(update_energy)
+Plots.plot!(update_energy_pd2)
 using Images
 #img = load("$dir/plots/demand_seconds_hetero_update_energy.png")
 #plot(load("$dir/plots/demand_seconds_hetero_update_energy.png"))
@@ -309,6 +308,7 @@ norm_energy_d = zeros(num_days,N)
 for j = 1:N
 	norm_energy_d[1,j] = norm(update_energy[1:n_updates_per_day,j])
 end
+
 
 
 
@@ -502,8 +502,8 @@ savefig(psum,"$dir/plots/demand_seconds_Y$(coupfact)_sum_hetero_update_half_hour
 
 # hourly plotting
 using LaTeXStrings
-plot(0:(num_days)*n_updates_per_day-1, ILC_power_update[1:num_days*n_updates_per_day], label=L"$\max_h \Vert P_{ILC, k}\Vert$", xticks = (1:n_updates_per_day:n_updates_per_day*num_days, string.(1:num_days)))
-plot(0:(num_days)*n_updates_per_day-1, ILC_power_update_pd2[1:num_days*n_updates_per_day], label=L"$\max_h \Vert P_{ILC, k}\Vert$", xticks = (1:n_updates_per_day:n_updates_per_day*num_days, string.(1:num_days)))
+Plots.plot(0:(num_days)*n_updates_per_day-1, ILC_power_update[1:num_days*n_updates_per_day], label=L"$\max_h \Vert P_{ILC, k}\Vert$", xticks = (1:n_updates_per_day:n_updates_per_day*num_days, string.(1:num_days)))
+Plots.plot(0:(num_days)*n_updates_per_day-1, ILC_power_update_pd2[1:num_days*n_updates_per_day], label=L"$\max_h \Vert P_{ILC, k}\Vert$", xticks = (1:n_updates_per_day:n_updates_per_day*num_days, string.(1:num_days)))
 
 
 plot!(0:n_updates_per_day*num_days-1,norm_update_energy./update, label=L"y_h")
