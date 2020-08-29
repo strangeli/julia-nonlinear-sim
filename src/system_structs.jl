@@ -2,7 +2,6 @@
 This is a module that contains functions with specified setups for numerical
 experiments.
 It depends on the modules `network_dynamics.jl` and `observables.jl`
-
 # Examples
 ```julia-repl
 julia> include("src/system_structs.jl")
@@ -51,9 +50,11 @@ module system_structs
 		mismatch_yesterday#::Array{Float64, 2}
 		daily_background_power#::Array{Float64, 2} # 24xN vector with the background power for each hour.
 		current_background_power
+		mismatch_d_control
 		ilc_nodes
 		ilc_covers
 		Q
+		update
 	end
 
 
@@ -109,6 +110,7 @@ module system_structs
 	Setup the system with default parameters.
 	"""
 	function default_pars(N)
+		#n_updates_per_day = Int(l_day/update)
 		low_layer_control = LeakyIntegratorPars(M_inv=60.,kP=1.3,T_inv=1.,kI=0.9)
 		#g = SimpleGraph(1)
 		g = random_regular_graph(iseven(3N) ? N : (N-1), 3)
@@ -120,8 +122,9 @@ module system_structs
 		fc = 1/6;
 		a = digitalfilter(Lowpass(fc),Butterworth(2));
 		Q1 = filtfilt(a,u);#Markov Parameter
-		Q = Toeplitz(Q1[1001:1001+24-1],Q1[1001:1001+24-1]);
-		higher_layer_control = ILCPars(kappa=0.35, mismatch_yesterday=zeros(24, N), daily_background_power=zeros(24, N), current_background_power=zeros(N), ilc_nodes=vc, ilc_covers=cover, Q=Q)
+		Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]);
+
+		higher_layer_control = ILCPars(kappa=0.35/update, mismatch_yesterday=zeros(n_updates_per_day, N), daily_background_power=zeros(n_updates_per_day, N), current_background_power=zeros(N), ilc_nodes=vc, ilc_covers=cover, Q=Q,update=update,mismatch_d_control=zeros(n_updates_per_day, N) )
 		periodic_infeed = t -> zeros(N)
 		peak_demand = rand(N)
 		periodic_demand= t -> zeros(N)#peak_demand .* abs(sin(pi * t/24.))
@@ -141,8 +144,9 @@ module system_structs
 								g)
 	end
 
-	function compound_pars(N, low_layer_control, kappa, ilc_nodes, ilc_covers, Q)
-		higher_layer_control = ILCPars(kappa=kappa, mismatch_yesterday=zeros(24, N), daily_background_power=zeros(24, N), current_background_power=zeros(N),ilc_nodes=ilc_nodes, ilc_covers=ilc_covers, Q=Q)
+	function compound_pars(N, low_layer_control, kappa, ilc_nodes, ilc_covers, Q, update)
+		n_updates_per_day = Int(floor(l_day/update))
+		higher_layer_control = ILCPars(kappa=kappa, mismatch_yesterday=zeros(n_updates_per_day, N), daily_background_power=zeros(n_updates_per_day, N), current_background_power=zeros(N),ilc_nodes=ilc_nodes, ilc_covers=ilc_covers, Q=Q, update=update,mismatch_d_control=zeros(n_updates_per_day, N))
 
 		periodic_infeed = t -> zeros(N)
 		periodic_demand= t -> zeros(N)
@@ -169,34 +173,50 @@ module system_structs
 	##############################################################################
 	##############################################################################
 	# Monte Carlo functions
+	l_day = 3600*24 # DemCurve.l_day
+	l_hour = 3600 # DemCurve.update
 
 	get_run(i, batch_size) = mod(i, batch_size)==0 ? batch_size : mod(i, batch_size)
 	get_batch(i, batch_size) = 1 + (i - 1) ÷ batch_size
 
 
-	function prob_func_ic(prob, i, repeat, batch_size, kappa_lst, num_days)
+	function prob_func_ic(prob, i, repeat, batch_size, kappa_lst, update_lst, num_days,kappa_lst_s,update_lst_s)
 		println("sim ", i)
-		run = get_run(i, batch_size)
-	    batch = get_batch(i, batch_size)
+		@show run = get_run(i, batch_size)
+	    @show batch = get_batch(i, batch_size)
+
+		#update = l_hour/4 #/2 for half # DemCurve.update
 
 		prob.p.hl.daily_background_power .= 0.
 		prob.p.hl.current_background_power .= 0.
 		prob.p.hl.mismatch_yesterday .= 0.
 
-		prob.p.hl.kappa = kappa_lst[batch]
+		prob.p.hl.mismatch_d_control .= 0.
+
+
+		#prob.p.hl.update = update
+		number= mod(batch,6)==0 ? 6 : mod(batch,6)
+		@show prob.p.hl.kappa = kappa_lst[batch]
+		#prob.p.hl.kappa = kappa_lst
+
+		@show prob.p.hl.update = update_lst[batch]
 
 		#prob.p.coupling = 800. .* diagm(0=>ones(ne(prob.p.graph)))
 
-		hourly_update = network_dynamics.HourlyUpdate()
+		#hourly_update = network_dynamics.Updating()
+
 
 		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
-			callback=CallbackSet(PeriodicCallback(hourly_update, 3600),
+			callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(), prob.p.hl.update ),
 								 PeriodicCallback(network_dynamics.DailyUpdate_X, 3600*24)))
+		#saved_values = SavedValues(Float64, Vector{Float64})
+		#cb = SavingCallback((u,t,integrator)->(tr(u),norm(u)), saved_values)
+
 	end
 
 
 
-	function observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N) # what should be extracted from one run
+	function observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N,Q1) # what should be extracted from one run
 		# sol.prob.callback.discrete_callbacks[1].affect!.f.integrated_control_power_history
 		omega_max = maximum(abs.(sol[freq_filter,:]))
 		ex = observables.frequency_exceedance(sol, freq_filter, freq_threshold)
@@ -206,30 +226,43 @@ module system_structs
 		#var_ld = observables.var_last_days(sol, freq_filter, sol.prob.tspan[2]/(24*3600))
 		var_ld = observables.var_last_days(sol, freq_filter, sol.prob.tspan[2]/(24*3600))
 	#	control_energy_abs = sol[energy_abs_filter,end]
+		#update = l_hour/4 #/2 for half # DemCurve.update
+		sol.prob.p.hl.mismatch_d_control .= sol.prob.p.hl.mismatch_yesterday
+		@show n_updates_per_day = Int(floor(l_day/sol.prob.p.hl.update))
+		#@show sol.prob.p.hl.mismatch_d_control=sol.prob.hl.mismatch_yesterday
 
-		hourly_energy = zeros(24*num_days,N)
-		for i=1:24*num_days
+		update_energy = zeros(n_updates_per_day*num_days,N)
+		for i=1:n_updates_per_day*num_days
 			for j = 1:N
-				hourly_energy[i,j] = sol(i*3600)[energy_filter[j]]
+				update_energy[i,j] = sol(i*sol.prob.p.hl.update)[energy_filter[j]]
 			end
 		end
 
-		ILC_power = zeros(num_days,24,N)
+		ILC_power = zeros(num_days,n_updates_per_day,N)
 		norm_energy_d = zeros(num_days,N)
 		for j = 1:N
-			norm_energy_d[1,j] = norm(hourly_energy[1:24,j])
+			#norm_energy_d[1,j] = norm(update_energy[1:n_updates_per_day,j])
+			norm_energy_d[1,j] = norm(update_energy[1:n_updates_per_day,j])/sol.prob.p.hl.update
 		end
+			#norm_energy_d[1,j] = norm(update_energy[1:n_updates_per_day,j])
+
+		sol.prob.p.hl.Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]);
+
 
 		for i=2:num_days
+			#for j = 1:N
+			#	ILC_power[i,:,j] = sol.prob.p.hl.Q*(ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+			#end
 			for j = 1:N
-				ILC_power[i,:,j] = sol.prob.p.hl.Q*(ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*24+1:i*24,j])
+				ILC_power[i,:,j] =sol.prob.p.hl.Q* (ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]))
 			end
 			for j = 1:N
-				norm_energy_d[i,j] = norm(hourly_energy[(i-1)*24+1:i*24,j])
+				norm_energy_d[i,j] = norm(update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/sol.prob.p.hl.update
 			end
 		end
 
-		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, hourly_energy, norm_energy_d), false)
+
+		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, update_energy, norm_energy_d,sol.prob.p.hl.update), false)
 	end
 
 

@@ -2,7 +2,7 @@ using JLD2, FileIO, GraphIO, CSV, DataFrames
 using Distributed
 using Interpolations
 
-_calc = false
+_calc = true
 _slurm = false
 
 if _calc
@@ -48,9 +48,9 @@ end
 		Random.seed!(42)
 end
 
-begin
+@everywhere begin
 	N = 4
-	num_days =  20
+	num_days = 20
 	batch_size = 1
 end
 
@@ -68,17 +68,19 @@ end
 
 @everywhere begin
 	l_day = 3600*24 # DemCurve.l_day
-	l_hour = 3600 # DemCurve.l_hour
+	l_hour = 3600 # DemCurve.update
+	update = l_hour/5 #/2 for half # DemCurve.update
+	n_updates_per_day=Int(floor(l_day/update)) # 24 l_day / update
 	l_minute = 60 # DemCurve.l_minute
-	#low_layer_control = experiments.LeakyIntegratorPars(M_inv=0.2,kP=52,T_inv=1/0.05,kI=10)
-	#low_layer_control = experiments.LeakyIntegratorPars(M_inv=0.2,kP=525,T_inv=1/0.05,kI=0.005)
-	#low_layer_control = experiments.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner=N),kI=repeat([0.005], inner=N)) # different for each node, change array
-	low_layer_control = experiments.LeakyIntegratorPars(M_inv=[1/5.; 1/4.8; 1/4.1; 1/4.8],kP= [400.; 110.; 100.; 200.],T_inv=[1/0.04; 1/0.045; 1/0.047; 1/0.043],kI=[0.05; 0.004; 0.05; 0.001]) # different for each node, change array
-	#low_layer_control = experiments.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=[0.1; 10; 100; 1000],T_inv=repeat([1/0.05], inner=N),kI=repeat([0.005], inner=N)) # different for each node, change array
-	#low_layer_control = experiments.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=[1/0.05; 1/0.5; 1/5; 1/50],kI=repeat([0.005], inner=N)) # different for each node, change array
-	#low_layer_control = experiments.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=[0.005; 0.5; 5; 500]) # different for each node, change array
-	#low_layer_control = experiments.LeakyIntegratorPars(M_inv=[0.002; 0.2; 2; 20],kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=repeat([0.005], inner=N)) # different for each node, change array
-	kappa = 0.75 / l_hour
+	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=52,T_inv=1/0.05,kI=10)
+	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=525,T_inv=1/0.05,kI=0.005)
+	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner=N),kI=repeat([0.005], inner=N)) # different for each node, change array
+	low_layer_control = system_structs.LeakyIntegratorPars(M_inv=[1/5.; 1/4.8; 1/4.1; 1/4.8],kP= [400.; 110.; 100.; 200.],T_inv=[1/0.04; 1/0.045; 1/0.047; 1/0.043],kI=[0.05; 0.004; 0.05; 0.001]) # different for each node, change array
+	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=[0.1; 10; 100; 1000],T_inv=repeat([1/0.05], inner=N),kI=repeat([0.005], inner=N)) # different for each node, change array
+	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=[1/0.05; 1/0.5; 1/5; 1/50],kI=repeat([0.005], inner=N)) # different for each node, change array
+	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=[0.005; 0.5; 5; 500]) # different for each node, change array
+	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=[0.002; 0.2; 2; 20],kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=repeat([0.005], inner=N)) # different for each node, change array
+	kappa = 0.75 / update
 end
 
 ############################################
@@ -123,7 +125,7 @@ end
 #  demand
 ############################################
 
-struct demand_amp_var
+@everywhere struct demand_amp_var
 	demand
 end
 
@@ -185,19 +187,34 @@ u = [zeros(1000,1);1;zeros(1000,1)];
 fc = 1/6;
 a = digitalfilter(Lowpass(fc),Butterworth(2));
 Q1 = filtfilt(a,u);#Markov Parameter
-Q = Toeplitz(Q1[1001:1001+24-1],Q1[1001:1001+24-1]);
+Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]);
 
 # kappa_lst = (0:0.01:2) ./ l_hour
 @everywhere begin
-	kappa_lst = (0:.25:1.75) ./ l_hour
-	kappa = kappa_lst[1]
-	num_monte = batch_size*length(kappa_lst)
+	update_lst_s= 60. *(12. : 12. : 72. )
+	kappa_lst_s = (0:.25:1.25)
+	kappa = kappa_lst_s[1]
+
+	#kappa_lst=repeat(kappa_lst_s,inner =length(update_lst_s))
+
+	update_lst=repeat(update_lst_s,inner=length(kappa_lst_s))
+
+	#longueur=Int(length(kappa_lst)/length(update_lst_s))
+	longueur=Int(length(update_lst)/length(kappa_lst_s))
+	kappa_lst=repeat(kappa_lst_s,outer =longueur)
+
+	update_lst=repeat(update_lst_s,outer=longueur)
+	for row in 1:length(kappa_lst)
+	        @show kappa_lst[row]=(kappa_lst[row] / update_lst[row])
+ 	end
+	num_monte = length(kappa_lst)
 end
 
-_compound_pars = experiments.compound_pars(N, low_layer_control, kappa, vc1, cover1, Q)
+_compound_pars = system_structs.compound_pars(N, low_layer_control, kappa, vc1, cover1, Q, update)
 _compound_pars.hl.daily_background_power .= 0
 _compound_pars.hl.current_background_power .= 0
 _compound_pars.hl.mismatch_yesterday .= 0.
+_compound_pars.hl.mismatch_d_control .= 0.
 _compound_pars.periodic_demand  = periodic_demand # t -> zeros(N) # periodic_demand
 _compound_pars.residual_demand = residual_demand # t -> zeros(N) # residual_demand
 _compound_pars.graph = graph_lst[1]
@@ -207,20 +224,21 @@ _compound_pars.coupling = 6 .* diagm(0=>ones(ne(graph_lst[1])))
 
 
 @everywhere begin
+
 	factor = 0. # 0.01*rand(compound_pars.D * compound_pars.N) #0.001 #0.00001
 	ic = factor .* ones(compound_pars.D * compound_pars.N)
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
-	callback=CallbackSet(PeriodicCallback(network_dynamics.HourlyUpdate(), l_hour),
+	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(),update ),
 						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
 end
 
 
 monte_prob = EnsembleProblem(
 	ode_tl1,
-	output_func = (sol, i) -> experiments.observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N),
-	prob_func = (prob,i,repeat) -> experiments.prob_func_ic(prob,i,repeat, batch_size, kappa_lst, num_days),
-#	reduction = (u, data, I) -> experiments.reduction_ic(u, data, I, batch_size),
+	output_func = (sol, i) -> system_structs.observer_ic(sol, i, freq_filter, energy_filter, freq_threshold, num_days,N,Q1),
+	prob_func = (prob,i,repeat) -> system_structs.prob_func_ic(prob, i, repeat, batch_size , kappa_lst, update_lst, num_days,kappa_lst_s,update_lst_s),
+#	reduction = (u, data, I) -> system_structs.reduction_ic(u, data, I, batch_size),
 	u_init = [])
 
 res = solve(monte_prob,
@@ -228,31 +246,55 @@ res = solve(monte_prob,
 					 trajectories=num_monte,
 					 batch_size=batch_size)
 
+
 kappa = [p[6] for p in res.u]
-hourly_energy = [p[10] for p in res.u]
+update_energy = [p[10] for p in res.u]
 norm_energy_d = [p[11] for p in res.u]
+update = [p[12] for p in res.u]
 
 using LaTeXStrings
-plot(mean(norm_energy_d[1],dims=2),legend=:bottomright, label = L"\kappa = 0\, h^{-1}", ytickfontsize=14,
-               xtickfontsize=14, linestyle=:dot, margin=8Plots.mm,
-    		   legendfontsize=14, linewidth=3,xaxis=("days [c]",font(14)), yaxis = ("2-norm of the error",font(14), left_margin=12Plots.mm)) #  ylims=(0,1e6)
-plot!(mean(norm_energy_d[2],dims=2), label= L"\kappa = 0.25\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
-plot!(mean(norm_energy_d[3],dims=2), label= L"\kappa = 0.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
-plot!(mean(norm_energy_d[4],dims=2),label=  L"\kappa = 0.75\, h^{-1}", linewidth = 3, linestyle=:dash)
-plot!(mean(norm_energy_d[5],dims=2), label= L"\kappa = 1\, h^{-1}", linewidth = 3, linestyle=:solid)
-#title!("Error norm")
-savefig("$dir/20200319_kappa_Y6_hetero.png")
+using Plots
+using Vega
+using Plotly
+x = view(update, 1:4)
+y = view(kappa, 1:4)
 
-using LaTeXStrings
-plot(mean(norm_energy_d[5],dims=2),legend=:topright, label = L"\kappa = 1\, h^{-1}", ytickfontsize=14,
+#norm_energy_d_mean=zeros(length(update_lst))
+#for row in 1:length(update_lst)
+#		@show norm_energy_d_mean[row]=(mean(norm_energy_d[row]))
+#end
+
+z=view((mean(norm_energy_d)),1:4,1:4)
+Plots.heatmap(x, y , z , ztickfontsize=14, colorbar=true,xlims = (720,2880),ylims = (0.0,0.00026041666666666667),
                xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
-    		   legendfontsize=13, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))  # ylims=(0,1e6)
+    		   legendfontsize=8, linewidth=3,xaxis=("update",font(14)), yaxis=("kappa",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
+
+
+Plots.savefig("heatmap.png")
+using LaTeXStrings
+
+Plots.plot(mean(norm_energy_d[5],dims=2),legend=:topright, label = L"\kappa = 1\, h^{-1}", ytickfontsize=14,
+               xtickfontsize=14,tickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
+    		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))   # ylims=(0,1e6)
 plot!(mean(norm_energy_d[6],dims=2),label=  L"\kappa = 1.25\, h^{-1}", linewidth = 3, linestyle=:dash)
 plot!(mean(norm_energy_d[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
 plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+Plots.savefig("$dir/20200319_kappa_Y6_hetero.png")
+
+
+
+using LaTeXStrings
+
+Plots.plot(mean(norm_energy_d[5],dims=2),legend=:topright, label = L"\kappa = 1\, h^{-1}", ytickfontsize=14,
+               xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
+    		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))  # ylims=(0,1e6)
+plot!(mean(norm_energy_d[6],dims=2),label=   L"\kappa = 1.25\, h^{-1}", linewidth = 3, linestyle=:dash)
+plot!(mean(norm_energy_d[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
+plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
 #plot!(mean(norm_energy_d[9],dims=2), label= L"\kappa = 2 h^{-1}", linewidth = 3, linestyle=:dot)
 #title!("Error norm")
-savefig("$dir/20200319_kappa2_Y6_hetero.png")
+Plots.savefig("$dir/20200319_kappa2_Y6_hetero.png")
 
 
 
