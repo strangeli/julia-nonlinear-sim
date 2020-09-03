@@ -137,6 +137,8 @@ function (hu::Updating)(integrator)
 	n_updates_per_day = Int(floor(l_day/integrator.p.hl.update))
 	updating_cycle  = Int(floor(mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1))
 	last_update = Int(floor(mod(updating_cycle-2, n_updates_per_day) + 1))
+	last_update_d = Int(floor(mod(last_update-2, n_updates_per_day) + 1))
+
 
 	power_idx = 3*integrator.p.N+1:4*integrator.p.N
 	power_idx_d = (3*integrator.p.N+1)-1:(4*integrator.p.N)-1
@@ -148,12 +150,11 @@ function (hu::Updating)(integrator)
 	# wrapped in [].
 
 	integrator.p.hl.mismatch_yesterday[last_update,:] .= integrator.u[power_idx]
-	integrator.p.hl.mismatch_d_control[updating_cycle,:] .= integrator.u[power_idx]
+	integrator.p.hl.mismatch_d_control[last_update_d,:] .= integrator.u[power_idx]
 	integrator.u[power_idx] .= 0.
 	integrator.u[power_idx_d] .= 0.
 	integrator.u[power_abs_idx] .= 0.
 
-	@show length(integrator.p.hl.mismatch_yesterday)
 	# println("hour $hour")
 	integrator.p.hl.current_background_power .= integrator.p.hl.daily_background_power[updating_cycle, :]
 
@@ -166,17 +167,17 @@ function (hu::Updating)(integrator)
 	nothing
 end
 function DailyUpdate_Pd2(integrator)
-	integrator.p.hl.daily_background_power = integrator.p.hl.Q * ( integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_d_control
-    +integrator.p.hl.kappa *(integrator.p.hl.mismatch_d_control -integrator.p.hl.mismatch_yesterday ) )
-
+	#integrator.p.hl.daily_background_power = integrator.p.hl.Q * ( integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_d_control
+	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday
+    +integrator.p.hl.kappa *(integrator.p.hl.mismatch_yesterday -integrator.p.hl.mismatch_d_control ) )
 	nothing
 end
 
 function DailyUpdate_X(integrator)
 	#println("mismatch ", integrator.p.hl.daily_background_power)
 	#println("Q ", integrator.p.hl.Q)
-	#integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
-	integrator.p.hl.daily_background_power = integrator.p.hl.Q * ( integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_d_control )
+	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
+	#integrator.p.hl.daily_background_power = integrator.p.hl.Q * ( integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_d_control )
 
 	#println("mismatch ", integrator.p.hl.daily_background_power)
 	nothing

@@ -177,15 +177,17 @@ sol1 = solve(ode_tl1, Rodas4())
 
 using Dates , GraphIO
 date = Dates.Date(Dates.now())
+#if isdir("$dir/solutions/$(date)") == false
+# 	mkdir("$dir/solutions/$(date)")
+#end
 
-
-#jldopen("$dir/solutions/$(date)/expI_sol_new.jld2", true, true, true, IOStream) do file
+#jldopen("$dir/solutions/$(date)/expI_sol_pd2_new.jld2", true, true, true, IOStream) do file
 #	file["t"] = sol1.t
 #    file["u"] = sol1.u
 #end
 
 #load("$dir/solutions/$(date)/expI_sol_new.jld2")
-f = jldopen("$dir/solutions/2020-08-26/expI_sol_new.jld2", "r")  # open read-only (default)
+f = jldopen("$dir/solutions/$(date)/expI_sol_pd2_new.jld2", "r")  # open read-only (default)
 
 
 #graph_dict = Dict("g$i"=> Graph(sol1.u[i][5]) for i = 1:length(sol1))
@@ -340,6 +342,7 @@ end
 
 
 
+
 #ILC_power_agg = maximum(mean(ILC_power.^2,dims=3),dims=2)
 ILC_power_agg = [norm(mean(ILC_power,dims=3)[d,:]) for d in 1:num_days+2]
 ILC_power_update_mean = vcat(mean(ILC_power,dims=3)[:,:,1]'...)
@@ -407,6 +410,7 @@ node = 2
 p2 = Plots.plot()
 ILC_power_update_mean_node = vcat(ILC_power[:,:,node]'...)
 ILC_power_update_mean_node_pd2 = vcat(ILC_power_pd2[:,:,node]'...)
+
 
 
 dd = t->((periodic_demand(t) .+ residual_demand(t)))
@@ -493,7 +497,7 @@ plot!(1:update:num_days*24*3600,  ILC_power_update_mean_sum[1:num_days*n_updates
     		   legendfontsize=10, linewidth=3,xaxis=("days [c]",font(14)),  yaxis=("normed power",font(14)),lc =:black, margin=5Plots.mm)
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_sum_pd2[1:num_days*n_updates_per_day], label=latexstring("\$u_j^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
 			    xtickfontsize=18,legend=false,
-			    legendfontsize=10, linewidth=3,xaxis=("days [c]",font(14)),  yaxis=("normed power",font(14)),lc =:black, margin=5Plots.mm)
+			    legendfontsize=10, linewidth=3,xaxis=("days [c]",font(14)),  yaxis=("normed power",font(14)),lc =:red, margin=5Plots.mm)
 #ylims!(-0.7,1.5)
 title!("ILC_power_update_mean_sum")
 savefig(psum,"$dir/plots/demand_seconds_Y$(coupfact)_sum_hetero_update_half_hour.png")
