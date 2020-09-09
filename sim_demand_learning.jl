@@ -173,8 +173,8 @@ begin
 						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
 end
 sol1 = solve(ode_tl1, Rodas4())
-
-
+Plots.plot()
+Plots.plot(sol1)
 using Dates , GraphIO
 date = Dates.Date(Dates.now())
 #if isdir("$dir/solutions/$(date)") == false

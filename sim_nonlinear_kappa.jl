@@ -230,7 +230,7 @@ _compound_pars.coupling = 6 .* diagm(0=>ones(ne(graph_lst[1])))
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
 	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(),update ),
-						 PeriodicCallback(network_dynamics.DailyUpdate_PD, l_day)))
+						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
 end
 
 
@@ -245,6 +245,22 @@ res = solve(monte_prob,
 					 Rodas4P(),
 					 trajectories=num_monte,
 					 batch_size=batch_size)
+using Plots
+
+using Dates , GraphIO
+date = Dates.Date(Dates.now())
+#if isdir("$dir/solutions/$(date)") == false
+#	mkdir("$dir/solutions/$(date)")
+#end
+
+#jldopen("$dir/solutions/$(date)/expI_sol_pd2_new.jld2", true, true, true, IOStream) do file
+#		file["u"] = res.u
+#end
+
+
+					 #load("$dir/solutions/$(date)/expI_sol_new.jld2")
+f = jldopen("$dir/solutions/2020-09-09/sim_non_linear_kappa_pd2.jld2", "r")  # open read-only (default)
+
 
 
 kappa = [p[6] for p in res.u]
@@ -252,12 +268,25 @@ update_energy = [p[10] for p in res.u]
 norm_energy_d = [p[11] for p in res.u]
 update = [p[12] for p in res.u]
 
+kappa_pd = [p[6] for p in f["u"]]
+update_energy_pd= [p[10] for p in f["u"]]
+norm_energy_d_pd = [p[11] for p in f["u"]]
+update_pd = [p[12] for p in f["u"]]
+
 using LaTeXStrings
 using Plots
 using Vega
 using Plotly
+
+Plots.plot(mean(norm_energy_d_pd[5],dims=2))
+
 x = view(update, 1:4)
 y = view(kappa, 1:4)
+
+
+Plots.plot(norm_energy_d)
+Plots.plot()
+Plots.plot(mean(norm_energy_d[5],dims=2))
 
 #norm_energy_d_mean=zeros(length(update_lst))
 #for row in 1:length(update_lst)
