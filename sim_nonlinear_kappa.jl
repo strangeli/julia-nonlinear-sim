@@ -277,8 +277,19 @@ using LaTeXStrings
 using Plots
 using Vega
 using Plotly
+Plots.plot()
 
-Plots.plot(mean(norm_energy_d_pd[5],dims=2))
+
+
+Plots.plot!(mean(norm_energy_d_pd[5],dims=2),c=:red,legend=:topright, label =  "pd", ytickfontsize=14,
+               xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
+    		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))
+Plots.plot!(mean(norm_energy_d[5],dims=2),linestyle=:dashdotdot,c=:blue, linewidth = 3,label = "p")
+
+Plots.plot!(mean(norm_energy_d_pd[6],dims=2),c=:red,xlims = (1,5), label = "pd", linewidth = 3)
+Plots.plot!(mean(norm_energy_d[6],dims=2),linestyle=:dashdotdot,c=:blue,xlims = (1,5), label = "p", linewidth = 3)
+
+Plots.savefig("norm_energy_d.png")
 
 x = view(update, 1:4)
 y = view(kappa, 1:4)
@@ -295,7 +306,7 @@ Plots.plot(mean(norm_energy_d[5],dims=2))
 
 z=view((mean(norm_energy_d)),1:4,1:4)
 Plots.heatmap(x, y , z , ztickfontsize=14, colorbar=true,xlims = (720,2880),ylims = (0.0,0.00026041666666666667),
-               xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
+               xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm, legendtitle="Legend Title"),
     		   legendfontsize=8, linewidth=3,xaxis=("update",font(14)), yaxis=("kappa",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
 
 
