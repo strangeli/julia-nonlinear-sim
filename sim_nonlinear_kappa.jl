@@ -256,13 +256,7 @@ date = Dates.Date(Dates.now())
 #jldopen("$dir/solutions/$(date)/expI_sol_pd2_new.jld2", true, true, true, IOStream) do file
 #		file["u"] = res.u
 #end
-
-
-					 #load("$dir/solutions/$(date)/expI_sol_new.jld2")
 f = jldopen("$dir/solutions/2020-09-09/sim_non_linear_kappa_pd2.jld2", "r")  # open read-only (default)
-
-
-
 kappa = [p[6] for p in res.u]
 update_energy = [p[10] for p in res.u]
 norm_energy_d = [p[11] for p in res.u]

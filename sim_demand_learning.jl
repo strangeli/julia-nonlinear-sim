@@ -164,27 +164,29 @@ compound_pars.coupling = coupfact .* diagm(0=>ones(ne(graph)))
 #using Pandas
 using DataFrames, StatsPlots , StringEncodings , DataFramesMeta , JLD2
 
+
 begin
 	factor = 0#0.01*rand(compound_pars.D * compound_pars.N)#0.001#0.00001
 	ic = factor .* ones(compound_pars.D * compound_pars.N)
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
 	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(),update),
-						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
+						 PeriodicCallback(network_dynamics.DailyUpdate_PD, l_day)))
 end
 sol1 = solve(ode_tl1, Rodas4())
 Plots.plot()
 Plots.plot(sol1)
 using Dates , GraphIO
 date = Dates.Date(Dates.now())
-if isdir("$dir/solutions/$(date)") == false
- 	mkdir("$dir/solutions/$(date)")
-end
 
-jldopen("$dir/solutions/$(date)/sim_demand_learning_p.jld2", true, true, true, IOStream) do file
-	file["t"] = sol1.t
-    file["u"] = sol1.u
-end
+#if isdir("$dir/solutions/$(date)") == false
+# 	mkdir("$dir/solutions/$(date)")
+#end
+
+#jldopen("$dir/solutions/$(date)/sim_demand_learning_p.jld2", true, true, true, IOStream) do file
+#	file["t"] = sol1.t
+#    file["u"] = sol1.u
+#end
 
 #load("$dir/solutions/$(date)/expI_sol_new.jld2")
 f = jldopen("$dir/solutions/2020-09-18/sim_demand_learning_pd.jld2", "r")  # open read-only (default)
@@ -238,7 +240,12 @@ for i=1:n_updates_per_day*num_days+1
 	end
 end
 
-
+update_energy_d = zeros(n_updates_per_day*num_days+1,N)
+for i=1:n_updates_per_day*num_days+1
+	for j = 1:N
+		update_energy_d[i,j] = sol1((i-2)*update)[energy_filter[j]]
+	end
+end
 		#for k in 1:length(f["t"])
 		#		  if (f["t"][k] ==(2-1)*update)
 		#			@show update_energy_pd[1,1] = f["u"][k][energy_filter[1]]
@@ -300,7 +307,12 @@ savefig("$dir/plots/demand_seconds_hetero_update_energy.png")
 #Then, write to .hdf5 file:
 
 #After you re-open a new Julia session, you can re-read the .hdf5 plot:
-
+update_energy_d = zeros(n_updates_per_day*num_days+1,N)
+for i=1:n_updates_per_day*num_days+1
+	for j = 1:N
+		update_energy_d[i,j] = sol1((i-2)*update)[energy_filter[j]]
+	end
+end
 
 ILC_power = zeros(num_days+2,n_updates_per_day,N)
 for j = 1:N
@@ -311,10 +323,6 @@ norm_energy_d = zeros(num_days,N)
 for j = 1:N
 	norm_energy_d[1,j] = norm(update_energy[1:n_updates_per_day,j])
 end
-
-
-
-
 for i=2:num_days
 	for j = 1:N
 		ILC_power[i+1,:,j] = Q*(ILC_power[i,:,j] +  kappa*update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
@@ -383,7 +391,7 @@ plot!(1:update:24*num_days*3600,update_energy[1:num_days*n_updates_per_day,node]
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node_pd[1:num_days*n_updates_per_day], label=latexstring("\$u_{pd}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),w=2, ytickfontsize=14,
 			   	xtickfontsize=18,
-			   	legendfontsize=10, linewidth=3, yaxis=("normed power",font(14)),  seriescolor = :lime,  margin=5Plots.mm)
+			   	legendfontsize=10, linewidth=3, yaxis=("normed power",font(14)),  seriescolor = :orchid,  margin=5Plots.mm)
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_updates_per_day], label=latexstring("\$u_{p}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
 			   xtickfontsize=18,w=2,
@@ -422,7 +430,7 @@ plot!(1:update:24*num_days*3600,update_energy[1:num_days*n_updates_per_day,node]
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node_pd[1:num_days*n_updates_per_day], label=latexstring("\$u_{pd}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),w=2, ytickfontsize=14,
 			   	xtickfontsize=18, yticks=false,
-			   	legendfontsize=10, linewidth=3,  seriescolor = :lime,  margin=5Plots.mm)
+			   	legendfontsize=10, linewidth=3,  seriescolor = :orchid,  margin=5Plots.mm)
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_updates_per_day], label=latexstring("\$u_{p}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
 			   xtickfontsize=18,w=2,yticks=false,
 			   legendfontsize=10,ylims=(-0.57,1.5) ,linewidth=3,  seriescolor =:black, margin=5Plots.mm)
@@ -445,7 +453,8 @@ plot!(1:update:24*num_days*3600,update_energy[1:num_days*n_updates_per_day,node]
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node_pd[1:num_days*n_updates_per_day], label=latexstring("\$u_{pd}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),w=2, ytickfontsize=14,
 			   	xtickfontsize=18,
-			   	legendfontsize=10, linewidth=3, yaxis=("normed power",font(14)),xaxis=("days [c]",font(14)),  seriescolor = :lime,  margin=5Plots.mm)
+			   	legendfontsize=10, linewidth=3, yaxis=("normed power",font(14)),xaxis=("days [c]",font(14)),  seriescolor = :orchid,  margin=5Plots.mm)
+
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_updates_per_day], label=latexstring("\$u_{p}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
 			   xtickfontsize=18,w=2,
 			   legendfontsize=10,ylims=(-0.57,1.5) ,linewidth=3, yaxis=("normed power",font(14)),xaxis=("days [c]",font(14)), seriescolor =:black, margin=5Plots.mm)
@@ -468,7 +477,7 @@ plot!(1:update:24*num_days*3600,update_energy[1:num_days*n_updates_per_day,node]
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node_pd[1:num_days*n_updates_per_day], label=latexstring("\$u_{pd}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)) ,ytickfontsize=14,
 			   	xtickfontsize=18,
-			   	legendfontsize=10,yticks=false, linewidth=3,xaxis=("days [c]",font(14)),w=2,   seriescolor = :lime,  margin=5Plots.mm)
+			   	legendfontsize=10,yticks=false, linewidth=3,xaxis=("days [c]",font(14)),w=2,   seriescolor = :orchid,  margin=5Plots.mm)
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_updates_per_day], label=latexstring("\$u_{p}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
 			   xtickfontsize=18,w=2,yticks=false,
@@ -501,7 +510,7 @@ plot!(1:update:24*num_days*3600,(update_energy_pd[1:num_days*n_updates_per_day,1
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_sum[1:num_days*n_updates_per_day], label=latexstring("\$u_j^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
 				xtickfontsize=14,w=2,
-				legendfontsize=10,ylims=(-0.57,1.5) ,linewidth=3, yaxis=("normed power",font(14)), seriescolor =:lime, margin=5Plots.mm)
+				legendfontsize=10,ylims=(-0.57,1.5) ,linewidth=3, yaxis=("normed power",font(14)), seriescolor =:orchid, margin=5Plots.mm)
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_sum_pd[1:num_days*n_updates_per_day], label=latexstring("\$u_j^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
 				xtickfontsize=14,

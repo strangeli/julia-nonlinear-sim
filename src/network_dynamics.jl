@@ -135,6 +135,7 @@ function (hu::Updating)(integrator)
 	updating_cycle  = Int(floor(mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1))
 	last_update = Int(floor(mod(updating_cycle-2, n_updates_per_day) + 1))
 	last_update_d = Int(floor(mod(last_update-2, n_updates_per_day) + 1))
+	last_update_2d = Int(floor(mod(last_update_d-2, n_updates_per_day) + 1))
 
 
 	power_idx = 3*integrator.p.N+1:4*integrator.p.N
