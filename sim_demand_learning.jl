@@ -61,29 +61,7 @@ begin
 	graph = random_regular_graph(iseven(3N) ? N : (N-1), 3)
 end
 
-# change last "3" to 1 for N=2
 
-# N = 1
-#graph = SimpleGraph(1)
-
-# # Square - needs to be changed only here
-# graph = SimpleGraph(4)
-# add_edge!(_graph_lst, 1,2)
-# add_edge!(_graph_lst, 2,3)
-# add_edge!(_graph_lst, 3,4)
-# add_edge!(_graph_lst, 4,1)
-
-
-# using GraphPlot
-# gplot(graph)
-
-# # Line - needs to be changed only here
-# graph = SimpleGraph(4)
-# add_edge!(_graph_lst, 1,2)
-# add_edge!(_graph_lst, 2,3)
-# add_edge!(_graph_lst, 3,4)
-# using GraphPlot
-# gplot(graph)
 
 ############################################
 #  demand
@@ -98,25 +76,6 @@ function (dav::demand_amp_var)(t)
 	dav.demand[index + 1,:]
 end
 
-# fixed amp over the days
-# demand_amp = rand(N) .* 250.
-
-# # slowly increasing amplitude - only working for 10 days now
-# demand_ampp = demand_amp_var(repeat([10 20 30 40 50 60 70 80 90 100 110], outer=Int(N/2))') # random positive amp over days by 10%
-# demand_ampn = demand_amp_var(repeat([-10 -20 -30 -40 -50 -60 -70 -80 -90 -100 -110], outer=Int(N/2))') # random positive amp over days by 10%
-# demand_amp = t->vcat(demand_ampp(t), demand_ampn(t))
-
-# # slowly decreasing amplitude - only working for 10 days now
-# demand_ampp = demand_amp_var(repeat([110 100 90 80 70 60 50 40 30 20 10], outer=Int(N/2))') # random positive amp over days by 10%
-# demand_ampn = demand_amp_var(repeat([-110 -100 -90 -80 -70 -60 -50 -40 -30 -20 -10], outer=Int(N/2))') # random positive amp over days by 10%
-# demand_amp = t->vcat(demand_ampp(t), demand_ampn(t))
-
-# # slowly decreasing and increasing amplitude - only working for 10 days now
-# demand_ampp = demand_amp_var(repeat([120 120 120 120 120 170 200 120 120 120 120 120 170 200 120], outer=Int(N/2))') # random positive amp over days by 10%
-# demand_ampn = demand_amp_var(repeat([120 120 120 120 120 170 200 120 120 120 120 120 170 200 120], outer=Int(N/2))') # random positive amp over days by 10%
-# demand_amp = t->vcat(demand_ampp(t), demand_ampn(t))
-
-# slowly increasing and decreasing amplitude - only working for <= 10 days and N = 4 now
 demand_amp1 = demand_amp_var(repeat([80 80 80 10 10 10 40 40 40 40 40], outer=Int(N/4))') # random positive amp over days by 10%
 demand_amp2 = demand_amp_var(repeat([10 10 10 80 80 80 40 40 40 40 40], outer=Int(N/4))') # random positive amp over days by 10%
 demand_amp3 = demand_amp_var(repeat([60 60 60 60 10 10 10 40 40 40 40], outer=Int(N/4))') # random positive amp over days by 10%
@@ -147,7 +106,6 @@ fc = 1/6;
 a = digitalfilter(Lowpass(fc),Butterworth(2));
 Q1 = filtfilt(a,u);# Markov Parameter
 Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]);
-#Q = Toeplitz(Q1[1001:1001+24-1],Q1[1001:1001+24-1]);
 
 
 compound_pars = system_structs.compound_pars(N, low_layer_control, kappa, vc1, cover1, Q, update)
@@ -161,7 +119,6 @@ compound_pars.graph = graph
 coupfact= 6.
 compound_pars.coupling = coupfact .* diagm(0=>ones(ne(graph)))
 
-#using Pandas
 using DataFrames, StatsPlots , StringEncodings , DataFramesMeta , JLD2
 
 
@@ -188,42 +145,9 @@ date = Dates.Date(Dates.now())
 #    file["u"] = sol1.u
 #end
 
-#load("$dir/solutions/$(date)/expI_sol_new.jld2")
-f = jldopen("$dir/solutions/2020-09-18/sim_demand_learning_pd.jld2", "r")  # open read-only (default)
+f = jldopen("$dir/solutions/2020-09-18/sim_demand_learning_pd.jld2", "r")
 
 
-#graph_dict = Dict("g$i"=> Graph(sol1.u[i][5]) for i = 1:length(sol1))
-#savegraph("$dir/solutions/$(date)/expIII_graph_lst.lg", graph_dict)
-
-
-#df=DataFrame(sol1)
-
-#df_t=DataFrame(t=sol1.t)
-# df_sol = DataFrame(sol1')
-#CSV.write("pdu.csv",df)
-#CSV.write("pdt.csv",df_t)
-
-# CSV.write("pd_test.csv",df_sol)
-# daten_test = CSV.read("pd_test.csv")
-
-#daten_u = CSV.read("pdu.csv" )
-#tab=[frames.Column2,frames.Column3,frames.Column4,frames.Column5,frames.Column6,frames.Column7,frames.Column8,frames.Column9,frames.Column10,frames.Column11,frames.Column12,frames.Column13,frames.Column14,frames.Column15,frames.Column16,frames.Column17,frames.Column18,frames.Column19,frames.Column20,frames.Column21]
-#tab2=[frames.x1,frames.x2,frames.x3,frames.x4,frames.x5,frames.x6,frames.x7,frames.x8,frames.x9,frames.x10,frames.Column11,frames.Column12,frames.Column13,frames.Column14,frames.Column15,frames.Column16,frames.Column17,frames.Column18,frames.Column19,frames.Column20,frames.Column21]
-
-#daten_t = CSV.read("pdt.csv"; header=false , transpose =true )
-#deletecols!(daten_t, :Column1)
-#daten_t=daten_t[:,2:37223]
-#frames=hcat(daten_t,daten_u)
-#CSV.write("pd.csv",frames)
-#dfk=DataFrame(t=frames.t , u=tab)
-#CSV.File(open(read, "pd.csv", enc"ISO-8859-1")) |> DataFrame
-#daten_num = [parse(Float64, ss) for ss in split(daten.u)]
-
-
-#names!(daten_t, [Symbol("$i") for i in 1:size(df,2)])
-#names!(daten_u, [Symbol("$i") for i in 1:size(df,2)])
-
-#df = DataFrame(sol1)
 using CSV
 using JLD2 , Pandas
 #JLD2.@save "outputt.jld2" sol1
@@ -233,86 +157,71 @@ using JLD2 , Pandas
 ###################''''''''''''''''''''''''###################################################
 using Plots
 
-update_energy = zeros(n_updates_per_day*num_days+1,N)
-for i=1:n_updates_per_day*num_days+1
+update_energy = zeros(n_updates_per_day*num_days+2,N)
+for i=2:n_updates_per_day*num_days+2
 	for j = 1:N
-		update_energy[i,j] = sol1((i-1)*update)[energy_filter[j]]
+		update_energy[i-1,j] = sol1((i-2)*update)[energy_filter[j]]
 	end
 end
 
 update_energy_d = zeros(n_updates_per_day*num_days+1,N)
 for i=1:n_updates_per_day*num_days+1
 	for j = 1:N
-		update_energy_d[i,j] = sol1((i-2)*update)[energy_filter[j]]
+		update_energy_d[i,j] = sol1((i-1)*update)[energy_filter[j]]
 	end
 end
-		#for k in 1:length(f["t"])
-		#		  if (f["t"][k] ==(2-1)*update)
-		#			@show update_energy_pd[1,1] = f["u"][k][energy_filter[1]]
-		#		  end
-		 #end
 
-		 #		for k in 1:size(daten_t,2)
-		 #				  if (daten_t[k][1] ==(i-1)*update)
-		 #					update_energy_pd[i,j] =   daten_u[k][energy_filter[j]]
-		 #				  end
-		 #		 end
-
-update_energy_pd = zeros(n_updates_per_day*num_days+1,N)
+update_energy_pd_mismatch_yesterday = zeros(n_updates_per_day*num_days+1,N)
 for i=1:n_updates_per_day*num_days+1
 	for j = 1:N
 		for k in 1:length(f["t"])
 		  	if (f["t"][k] ==(i-1)*update)
 					if (f["u"][k][energy_filter[j]] != 0)
-				       update_energy_pd[i,j] = f["u"][k][energy_filter[j]]
+				       update_energy_pd_mismatch_yesterday[i,j] = f["u"][k][energy_filter[j]]
 				   end
 		  	end
 		end
 	end
  end
 
-#	end
-#end
 
-#empty = false
-#for k in 1:size(daten_t,2)
-#		   if ((daten_t[k][1] ==(2-1)*update)&& (empty == true ))
-#				   @show daten_u[k][energy_filter[1]]
-#				   empty= false
-#		   else
-#			   	   empty = true
-#		   end
-#end
+ update_energy_pd_mismatch_d_control = zeros(n_updates_per_day*num_days+2,N)
+ for i=1:n_updates_per_day*num_days+2
+ 	for j = 1:N
+ 		for k in 1:length(f["t"])
+ 		  	if (f["t"][k] ==(i-2)*update)
+ 					if (f["u"][k][energy_filter[j]] != 0)
+ 				       update_energy_pd_mismatch_d_control[i,j] = f["u"][k][energy_filter[j]]
+ 				   end
+ 		  	end
+ 		end
+ 	end
+  end
+
 
 Plots.plot(update_energy)
 Plots.plot!(update_energy_pd)
 using Images
-#img = load("$dir/plots/demand_seconds_hetero_update_energy.png")
-#plot(load("$dir/plots/demand_seconds_hetero_update_energy.png"))
-#p1 = plot()
 
-
-#plot!(update_energy[:,1] , title = "Update energy")
-#plot!(convert(Matrix, data[:,1:4])[:,1] )
-#@df df plot(:update_energy)
 savefig("$dir/plots/demand_seconds_hetero_update_energy.png")
-#hdf5() #Select HDF5-Plots "backend"
-#p = plot(update_energy[:,1] , title = "Update energy") #Construct plot as usual#
-#Plots.hdf5plot_write(p, "plotsave.hdf5")
-#plot() #Must first select some backend
-#pread = Plots.hdf5plot_read("plotsave.hdf5")
-#plot!(update_energy[:,1] , title = "Update energy")
-#savefig("hour.png")
 
-#Then, write to .hdf5 file:
 
-#After you re-open a new Julia session, you can re-read the .hdf5 plot:
-update_energy_d = zeros(n_updates_per_day*num_days+1,N)
-for i=1:n_updates_per_day*num_days+1
+
+ILC_power = zeros(num_days+2,n_updates_per_day,N)
+for j = 1:N
+	ILC_power[3,:,j] = Q*(zeros(n_updates_per_day,1) +  kappa*update_energy[1:n_updates_per_day,j])
+end
+
+for i=3:num_days
 	for j = 1:N
-		update_energy_d[i,j] = sol1((i-2)*update)[energy_filter[j]]
+		ILC_power[i+1,:,j] =update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]
 	end
 end
+
+
+
+
+
 
 ILC_power = zeros(num_days+2,n_updates_per_day,N)
 for j = 1:N
@@ -334,20 +243,25 @@ end
 
 ILC_power_pd = zeros(num_days+2,n_updates_per_day,N)
 for j = 1:N
-	ILC_power_pd[2,:,j] = Q*(zeros(n_updates_per_day,1) +  kappa*update_energy_pd[1:n_updates_per_day,j])
+	ILC_power_pd[2,:,j] = Q*(zeros(n_updates_per_day,1) +  kappa*update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]
+	+kappa*(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j]))
 end
-norm_energy_d_pd = zeros(num_days,N)
-for j = 1:N
-	norm_energy_d_pd[1,j] = norm(update_energy_pd[1:n_updates_per_day,j])
-end
+#norm_energy_d_pd = zeros(num_days,N)
+#for j = 1:N
+#	norm_energy_d_pd[1,j] = norm(update_energy_pd[1:n_updates_per_day,j])
+#end
 
 
 for i=2:num_days
 	for j = 1:N
-		ILC_power_pd[i+1,:,j] = Q*(ILC_power_pd[i,:,j] +  kappa*update_energy_pd[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
-		norm_energy_d_pd[i,j] = norm(update_energy_pd[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+
+		ILC_power_pd[i+1,:,j] = Q*(ILC_power_pd[i,:,j] +  kappa*update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]
+		+kappa*(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-2)*n_updates_per_day+2:i*n_updates_per_day,j]))
+
+		#norm_energy_d_pd[i,j] = norm(update_energy_pd[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
 	end
 end
+
 Plots.plot()
 Plots.plot(update_energy)
 Plots.plot!(update_energy_pd)
@@ -386,7 +300,8 @@ ILC_power_update_mean_node_pd = vcat(ILC_power_pd[:,:,node]'...)
 dd = t->((periodic_demand(t) .+ residual_demand(t)))
 Plots.plot(0:num_days*l_day, t -> dd(t)[node], alpha=0.2,legend=false, label = latexstring("P^d"),linewidth=3,legendfontsize=10, linestyle=:dot)
 
-plot!(1:update:24*num_days*3600,update_energy_pd[1:num_days*n_updates_per_day,node]./update, label=latexstring("y_{pd}"),linewidth=0.3, color ="yellow" ,  w = 2,legend=false,legendfontsize=10,legendfontrotation=10) #, linestyle=:dash)
+
+plot!(1:update:24*num_days*3600,(update_energy_pd_mismatch_yesterday[1:num_days*n_updates_per_day,node])./update, label=latexstring("y_{pd}"),linewidth=0.3, color ="yellow" ,  w = 2,legend=false,legendfontsize=10,legendfontrotation=10) #, linestyle=:dash)
 plot!(1:update:24*num_days*3600,update_energy[1:num_days*n_updates_per_day,node]./update, label=latexstring("y_{p}"),linewidth=0.3,color="red",linestyle=:solid, w = 2)
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node_pd[1:num_days*n_updates_per_day], label=latexstring("\$u_{pd}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),w=2, ytickfontsize=14,
