@@ -249,13 +249,15 @@ using Plots
 
 using Dates , GraphIO
 date = Dates.Date(Dates.now())
-#if isdir("$dir/solutions/$(date)") == false
-#	mkdir("$dir/solutions/$(date)")
-#end
+if isdir("$dir/solutions/$(date)") == false
+	mkdir("$dir/solutions/$(date)")
+endupdate_energy_pd_mismatch_d_controlupdate_energy_pd_mismatch_d_control
 
-#jldopen("$dir/solutions/$(date)/expI_sol_pd2_new.jld2", true, true, true, IOStream) do file
-#		file["u"] = res.u
-#end
+jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_pd2.jld2", true, true, true, IOStream) do file
+		file["u"] = res.u
+		file["monte_prob"] = monte_prob
+		file["res"] = res
+end
 f = jldopen("$dir/solutions/2020-09-09/sim_non_linear_kappa_pd2.jld2", "r")  # open read-only (default)
 kappa = [p[6] for p in res.u]
 update_energy = [p[10] for p in res.u]
@@ -263,9 +265,32 @@ norm_energy_d = [p[11] for p in res.u]
 update = [p[12] for p in res.u]
 
 kappa_pd = [p[6] for p in f["u"]]
-update_energy_pd= [p[10] for p in f["u"]]
-norm_energy_d_pd = [p[11] for p in f["u"]]
+update_energy_pd_mismatch_yesterday= [p[10] for p in f["u"]]
+#norm_energy_d_pd = [p[11] for p in f["u"]]
+update_energy_pd_mismatch_d_control= [p[13] for p in f["u"]]
 update_pd = [p[12] for p in f["u"]]
+
+
+update_energy_pd =zeros(n_updates_per_day*num_days+1,N)
+for i=1:n_updates_per_day*num_days+1
+   for j = 1:N
+	   update_energy_pd[i,j] = (2*update_energy_pd_mismatch_yesterday[i,j])-update_energy_pd_mismatch_d_control[i,j]
+   end
+end
+
+norm_energy_d_pd = zeros(num_days,N)
+for j = 1:N
+   norm_energy_d_pd[1,j] = norm(update_energy_pd[1:n_updates_per_day,j])
+end
+
+
+for i=2:num_days
+   for j = 1:N
+	   norm_energy_d_pd[i,j] = norm(update_energy_pd[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/update_pd
+   end
+end
+
+
 
 using LaTeXStrings
 using Plots

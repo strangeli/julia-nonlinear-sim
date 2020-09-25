@@ -43,8 +43,8 @@ begin
 	l_minute = 60 # DemCurve.l_minute
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=52,T_inv=1/0.05,kI=10)
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=525,T_inv=1/0.05,kI=0.005)
-	# low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner=N),kI=repeat([0.005], inner=N)) # different for each node, change array
-	low_layer_control = system_structs.LeakyIntegratorPars(M_inv=[1/5.; 1/4.8; 1/4.1; 1/4.8],kP= [400.; 110.; 100.; 200.],T_inv=[1/0.04; 1/0.045; 1/0.047; 1/0.043],kI=[0.05; 0.004; 0.05; 0.001]) # different for each node, change array
+	low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner=N),kI=repeat([0.005], inner=N)) # different for each node, change array
+	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=[1/5.; 1/4.8; 1/4.1; 1/4.8],kP= [400.; 110.; 100.; 200.],T_inv=[1/0.04; 1/0.045; 1/0.047; 1/0.043],kI=[0.05; 0.004; 0.05; 0.001]) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=[0.1; 10; 100; 1000],T_inv=repeat([1/0.05], inner=N),kI=repeat([0.005], inner=N)) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=[1/0.05; 1/0.5; 1/5; 1/50],kI=repeat([0.005], inner=N)) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=[0.005; 0.5; 5; 500]) # different for each node, change array
@@ -128,7 +128,7 @@ begin
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
 	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(),update),
-						 PeriodicCallback(network_dynamics.DailyUpdate_PD, l_day)))
+						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
 end
 sol1 = solve(ode_tl1, Rodas4())
 Plots.plot()
@@ -137,15 +137,15 @@ using Dates , GraphIO
 date = Dates.Date(Dates.now())
 
 #if isdir("$dir/solutions/$(date)") == false
-# 	mkdir("$dir/solutions/$(date)")
+#	mkdir("$dir/solutions/$(date)")
 #end
 
-#jldopen("$dir/solutions/$(date)/sim_demand_learning_p.jld2", true, true, true, IOStream) do file
+#jldopen("$dir/solutions/$(date)/sim_demand_learning_pd2.jld2", true, true, true, IOStream) do file
 #	file["t"] = sol1.t
 #    file["u"] = sol1.u
 #end
 
-f = jldopen("$dir/solutions/2020-09-18/sim_demand_learning_pd.jld2", "r")
+f = jldopen("$dir/solutions/2020-09-25/sim_demand_learning_pd2.jld2", "r")
 
 
 using CSV
@@ -156,20 +156,15 @@ using JLD2 , Pandas
 #                               PLOTTING                             #
 ###################''''''''''''''''''''''''###################################################
 using Plots
-
-update_energy = zeros(n_updates_per_day*num_days+2,N)
-for i=2:n_updates_per_day*num_days+2
-	for j = 1:N
-		update_energy[i-1,j] = sol1((i-2)*update)[energy_filter[j]]
-	end
-end
-
-update_energy_d = zeros(n_updates_per_day*num_days+1,N)
+update_energy = zeros(n_updates_per_day*num_days+1,N)
 for i=1:n_updates_per_day*num_days+1
 	for j = 1:N
-		update_energy_d[i,j] = sol1((i-1)*update)[energy_filter[j]]
+		update_energy[i,j] = sol1((i-1)*update)[energy_filter[j]]
 	end
 end
+
+
+
 
 update_energy_pd_mismatch_yesterday = zeros(n_updates_per_day*num_days+1,N)
 for i=1:n_updates_per_day*num_days+1
@@ -185,11 +180,11 @@ for i=1:n_updates_per_day*num_days+1
  end
 
 
- update_energy_pd_mismatch_d_control = zeros(n_updates_per_day*num_days+2,N)
- for i=1:n_updates_per_day*num_days+2
+ update_energy_pd_mismatch_d_control = zeros(n_updates_per_day*num_days+1,N)
+ for i=2:n_updates_per_day*num_days+1
  	for j = 1:N
  		for k in 1:length(f["t"])
- 		  	if (f["t"][k] ==(i-2)*update)
+ 		  	if (f["t"][k] ==(i-1)*update)
  					if (f["u"][k][energy_filter[j]] != 0)
  				       update_energy_pd_mismatch_d_control[i,j] = f["u"][k][energy_filter[j]]
  				   end
@@ -198,25 +193,27 @@ for i=1:n_updates_per_day*num_days+1
  	end
   end
 
+ # update_energy_d = zeros(n_updates_per_day*num_days+1,N)
+ # for i=2:n_updates_per_day*num_days+1
+ # 	for j = 1:N
+ # 		update_energy[i,j] = sol1((i-1)*update)[energy_filter[j]]
+ # 	end
+ # end
+
+ update_energy_pd =zeros(n_updates_per_day*num_days+1,N)
+ for i=1:n_updates_per_day*num_days+1
+ 	for j = 1:N
+ 		update_energy_pd[i,j] = (2*update_energy_pd_mismatch_yesterday[i,j])-update_energy_pd_mismatch_d_control[i,j]
+ 	end
+ end
+
+
 
 Plots.plot(update_energy)
 Plots.plot!(update_energy_pd)
 using Images
 
 savefig("$dir/plots/demand_seconds_hetero_update_energy.png")
-
-
-
-ILC_power = zeros(num_days+2,n_updates_per_day,N)
-for j = 1:N
-	ILC_power[3,:,j] = Q*(zeros(n_updates_per_day,1) +  kappa*update_energy[1:n_updates_per_day,j])
-end
-
-for i=3:num_days
-	for j = 1:N
-		ILC_power[i+1,:,j] =update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]
-	end
-end
 
 
 
@@ -235,9 +232,30 @@ end
 for i=2:num_days
 	for j = 1:N
 		ILC_power[i+1,:,j] = Q*(ILC_power[i,:,j] +  kappa*update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
-		norm_energy_d[i,j] = norm(update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+		norm_energy_d[i,j] = norm(update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/update
 	end
 end
+
+
+
+#ILC_power = zeros(num_days+2,n_updates_per_day,N)
+#for j = 1:N
+#	ILC_power[2,:,j] = Q*(zeros(n_updates_per_day,1) +  kappa*update_energy[1:n_updates_per_day,j]
+#	+  kappa*(update_energy[1:n_updates_per_day,j]-update_energy_d[1:n_updates_per_day,j]))
+#end
+
+
+#norm_energy_d = zeros(num_days,N)
+#for j = 1:N
+#	norm_energy_d[1,j] = norm(update_energy[1:n_updates_per_day,j])
+#end
+#for i=2:num_days
+#	for j = 1:N
+#		ILC_power[i+1,:,j] = Q*(ILC_power[i,:,j] +  kappa*update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]
+#		+  kappa*(update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_d[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]))
+#		#norm_energy_d[i,j] = norm(update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+#	end
+#end
 
 
 
@@ -246,25 +264,29 @@ for j = 1:N
 	ILC_power_pd[2,:,j] = Q*(zeros(n_updates_per_day,1) +  kappa*update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]
 	+kappa*(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j]))
 end
-#norm_energy_d_pd = zeros(num_days,N)
-#for j = 1:N
-#	norm_energy_d_pd[1,j] = norm(update_energy_pd[1:n_updates_per_day,j])
-#end
+
+
+
+
+norm_energy_d_pd = zeros(num_days,N)
+for j = 1:N
+	norm_energy_d_pd[1,j] = norm(update_energy_pd[1:n_updates_per_day,j])
+end
 
 
 for i=2:num_days
 	for j = 1:N
 
 		ILC_power_pd[i+1,:,j] = Q*(ILC_power_pd[i,:,j] +  kappa*update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]
-		+kappa*(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-2)*n_updates_per_day+2:i*n_updates_per_day,j]))
+		+kappa*(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]))
 
-		#norm_energy_d_pd[i,j] = norm(update_energy_pd[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+		norm_energy_d_pd[i,j] = norm(update_energy_pd[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/update
 	end
 end
 
 Plots.plot()
-Plots.plot(update_energy)
-Plots.plot!(update_energy_pd)
+Plots.plot(ILC_power)
+Plots.plot!(ILC_power_pd)
 
 
 #ILC_power_agg = maximum(mean(ILC_power.^2,dims=3),dims=2)

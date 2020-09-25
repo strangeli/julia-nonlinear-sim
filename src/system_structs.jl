@@ -257,7 +257,16 @@ module system_structs
 		end
 
 
-		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, update_energy, norm_energy_d,sol.prob.p.hl.update), false)
+		update_energy_pd_mismatch_d_control = zeros(n_updates_per_day*num_days,N)
+ 		for i=2:n_updates_per_day*num_days
+ 			for j = 1:N
+ 				update_energy[i,j] = sol(i*sol.prob.p.hl.update)[energy_filter[j]]
+ 			end
+ 		end
+
+
+
+		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, update_energy, norm_energy_d,sol.prob.p.hl.update,update_energy_pd_mismatch_d_control), false)
 	end
 
 
