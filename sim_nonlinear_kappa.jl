@@ -224,7 +224,6 @@ _compound_pars.coupling = 6 .* diagm(0=>ones(ne(graph_lst[1])))
 
 
 @everywhere begin
-
 	factor = 0. # 0.01*rand(compound_pars.D * compound_pars.N) #0.001 #0.00001
 	ic = factor .* ones(compound_pars.D * compound_pars.N)
 	tspan = (0., num_days * l_day)
@@ -251,44 +250,24 @@ using Dates , GraphIO
 date = Dates.Date(Dates.now())
 if isdir("$dir/solutions/$(date)") == false
 	mkdir("$dir/solutions/$(date)")
-endupdate_energy_pd_mismatch_d_controlupdate_energy_pd_mismatch_d_control
-
-jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_pd2.jld2", true, true, true, IOStream) do file
-		file["u"] = res.u
-		file["monte_prob"] = monte_prob
-		file["res"] = res
 end
-f = jldopen("$dir/solutions/2020-09-09/sim_non_linear_kappa_pd2.jld2", "r")  # open read-only (default)
+
+jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_pd.jld2", true, true, true, IOStream) do file
+		file["u"] = res.u
+end
+f = jldopen("$dir/solutions/2020-09-26/sim_non_linear_kappa_p.jld2", "r")  # open read-only (default)
 kappa = [p[6] for p in res.u]
 update_energy = [p[10] for p in res.u]
-norm_energy_d = [p[11] for p in res.u]
+norm_energy_d = [p[13] for p in res.u]
 update = [p[12] for p in res.u]
 
-kappa_pd = [p[6] for p in f["u"]]
-update_energy_pd_mismatch_yesterday= [p[10] for p in f["u"]]
-#norm_energy_d_pd = [p[11] for p in f["u"]]
-update_energy_pd_mismatch_d_control= [p[13] for p in f["u"]]
-update_pd = [p[12] for p in f["u"]]
+#update_energy_pd_mismatch_yesterday= [p[10] for p in f["u"]]
+#update_energy_pd_mismatch_d_control= [p[13] for p in f["u"]]
+#update_energy_pd=[p[14] for p in f["u"]]
+norm_energy_d_pd=[p[11] for p in f["u"]]
 
 
-update_energy_pd =zeros(n_updates_per_day*num_days+1,N)
-for i=1:n_updates_per_day*num_days+1
-   for j = 1:N
-	   update_energy_pd[i,j] = (2*update_energy_pd_mismatch_yesterday[i,j])-update_energy_pd_mismatch_d_control[i,j]
-   end
-end
 
-norm_energy_d_pd = zeros(num_days,N)
-for j = 1:N
-   norm_energy_d_pd[1,j] = norm(update_energy_pd[1:n_updates_per_day,j])
-end
-
-
-for i=2:num_days
-   for j = 1:N
-	   norm_energy_d_pd[i,j] = norm(update_energy_pd[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/update_pd
-   end
-end
 
 
 
@@ -299,35 +278,35 @@ using Plotly
 Plots.plot()
 
 
-
 Plots.plot!(mean(norm_energy_d_pd[5],dims=2),c=:red,legend=:topright, label =  "pd", ytickfontsize=14,
                xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
     		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))
 Plots.plot!(mean(norm_energy_d[5],dims=2),linestyle=:dashdotdot,c=:blue, linewidth = 3,label = "p")
+Plots.plot!(mean(norm_energy_d_pd[5],dims=2),linestyle=:dashdotdot,c=:blue, linewidth = 3,label = "p")
 
 Plots.plot!(mean(norm_energy_d_pd[6],dims=2),c=:red,xlims = (1,5), label = "pd", linewidth = 3)
 Plots.plot!(mean(norm_energy_d[6],dims=2),linestyle=:dashdotdot,c=:blue,xlims = (1,5), label = "p", linewidth = 3)
 
 Plots.savefig("norm_energy_d.png")
+Plots.plot()
+Plots.plot!(norm_energy_d_pd)
+Plots.plot!(norm_energy_d)
 
+Plots.plot()
 x = view(update, 1:4)
 y = view(kappa, 1:4)
-
-
-Plots.plot(norm_energy_d)
-Plots.plot()
-Plots.plot(mean(norm_energy_d[5],dims=2))
 
 #norm_energy_d_mean=zeros(length(update_lst))
 #for row in 1:length(update_lst)
 #		@show norm_energy_d_mean[row]=(mean(norm_energy_d[row]))
 #end
 
-z=view((mean(norm_energy_d)),1:4,1:4)
+z=view((mean(norm_energy_d_pd)),1:4,1:4)
 Plots.heatmap(x, y , z , ztickfontsize=14, colorbar=true,xlims = (720,2880),ylims = (0.0,0.00026041666666666667),
-               xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm, legendtitle="Legend Title"),
-    		   legendfontsize=8, linewidth=3,xaxis=("update",font(14)), yaxis=("kappa",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
-
+               xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm, zlabel="Legend Title",
+    		   legendfontsize=8, linewidth=3, name = "ht1",legend=:topright,    heatmap_legend_param = list(
+        title = "rnorm"),
+			   xaxis=("update",font(14)), yaxis=("kappa",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
 
 Plots.savefig("heatmap.png")
 using LaTeXStrings

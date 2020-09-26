@@ -2,7 +2,7 @@
 This is a module that contains functions with specified setups for numerical
 experiments.
 It depends on the modules `network_dynamics.jl` and `observables.jl`
-# Examples
+# Examplesn
 ```julia-repl
 julia> include("src/system_structs.jl")
 Main.system_structs
@@ -196,10 +196,10 @@ module system_structs
 
 		#prob.p.hl.update = update
 		number= mod(batch,6)==0 ? 6 : mod(batch,6)
-		@show prob.p.hl.kappa = kappa_lst[batch]
+		prob.p.hl.kappa = kappa_lst[batch]
 		#prob.p.hl.kappa = kappa_lst
 
-		@show prob.p.hl.update = update_lst[batch]
+		prob.p.hl.update = update_lst[batch]
 
 		#prob.p.coupling = 800. .* diagm(0=>ones(ne(prob.p.graph)))
 
@@ -228,7 +228,7 @@ module system_structs
 	#	control_energy_abs = sol[energy_abs_filter,end]
 		#update = l_hour/4 #/2 for half # DemCurve.update
 		#sol.prob.p.hl.mismatch_d_control .= sol.prob.p.hl.mismatch_yesterday
-		@show n_updates_per_day = Int(floor(l_day/sol.prob.p.hl.update))
+		n_updates_per_day = Int(floor(l_day/sol.prob.p.hl.update))
 		#@show sol.prob.p.hl.mismatch_d_control=sol.prob.hl.mismatch_yesterday
 
 		update_energy = zeros(n_updates_per_day*num_days,N)
@@ -238,7 +238,12 @@ module system_structs
 			end
 		end
 
-
+		update_energy_pd_mismatch_d_control = zeros(n_updates_per_day*num_days,N)
+ 		for i=2:n_updates_per_day*num_days
+ 			for j = 1:N
+ 				@show update_energy_pd_mismatch_d_control[i,j] = sol(i*sol.prob.p.hl.update)[energy_filter[j]]
+ 			end
+ 		end
 
 		ILC_power = zeros(num_days,n_updates_per_day,N)
 		norm_energy_d = zeros(num_days,N)
@@ -247,6 +252,7 @@ module system_structs
 			norm_energy_d[1,j] = norm(update_energy[1:n_updates_per_day,j])/sol.prob.p.hl.update
 		end
 		sol.prob.p.hl.Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]);
+		ILC_power_pd = zeros(num_days,n_updates_per_day,N)
 		for i=2:num_days
 			for j = 1:N
 				ILC_power[i,:,j] =sol.prob.p.hl.Q* (ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]))
@@ -257,16 +263,30 @@ module system_structs
 		end
 
 
-		update_energy_pd_mismatch_d_control = zeros(n_updates_per_day*num_days,N)
- 		for i=2:n_updates_per_day*num_days
- 			for j = 1:N
- 				update_energy[i,j] = sol(i*sol.prob.p.hl.update)[energy_filter[j]]
- 			end
- 		end
+		update_energy_pd = zeros(n_updates_per_day*num_days,N)
+		for i=2:n_updates_per_day*num_days
+			for j = 1:N
+				update_energy_pd[i,j] = 2*(update_energy[i,j])-update_energy_pd_mismatch_d_control[i,j]
+			end
+		end
+
+		norm_energy_d_pd = zeros(num_days,N)
+		for j = 1:N
+		   norm_energy_d_pd[1,j] = norm(update_energy_pd[1:n_updates_per_day,j])/sol.prob.p.hl.update
+		end
+
+		for i=2:num_days
+			for j = 1:N
+				ILC_power_pd[i,:,j] =sol.prob.p.hl.Q* (ILC_power_pd[i-1,:,j] +  sol.prob.p.hl.kappa*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j])
+				+  sol.prob.p.hl.kappa*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]-update_energy_pd_mismatch_d_control[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]))
+			end
+			for j = 1:N
+				norm_energy_d_pd[i,j] = norm(update_energy_pd[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/sol.prob.p.hl.update
+			end
+		end
 
 
-
-		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, update_energy, norm_energy_d,sol.prob.p.hl.update,update_energy_pd_mismatch_d_control), false)
+		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, update_energy, norm_energy_d,sol.prob.p.hl.update,norm_energy_d_pd), false)
 	end
 
 
