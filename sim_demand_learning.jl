@@ -139,12 +139,12 @@ date = Dates.Date(Dates.now())
 #	mkdir("$dir/solutions/$(date)")
 #end
 
-#jldopen("$dir/solutions/$(date)/sim_demand_learning_pd.jld2", true, true, true, IOStream) do file
+#jldopen("$dir/solutions/2020-09-26/sim_demand_learning_p.jld2", true, true, true, IOStream) do file
 #	file["t"] = sol1.t
 #    file["u"] = sol1.u
 #end
 
-f = jldopen("$dir/solutions/2020-09-26/sim_demand_learning_pd.jld2", "r")
+f = jldopen("$dir/solutions/2020-09-26/sim_demand_learning_p.jld2", "r")
 
 
 using CSV
@@ -155,7 +155,7 @@ using JLD2 , Pandas
 #                               PLOTTING                             #
 ###################''''''''''''''''''''''''###################################################
 using Plots
-update_energy = zeros(n_updates_per_day*num_days+1,N)
+update_energy= zeros(n_updates_per_day*num_days+1,N)
 for i=1:n_updates_per_day*num_days+1
 	for j = 1:N
 		update_energy[i,j] = sol1((i-1)*update)[energy_filter[j]]
@@ -163,40 +163,53 @@ for i=1:n_updates_per_day*num_days+1
 end
 
 
-
-
 update_energy_pd_mismatch_yesterday = zeros(n_updates_per_day*num_days+1,N)
 for i=1:n_updates_per_day*num_days+1
 	for j = 1:N
-		for k in 1:length(f["t"])
-		  	if (f["t"][k] ==(i-1)*update)
-					if (f["u"][k][energy_filter[j]] != 0)
-				       update_energy_pd_mismatch_yesterday[i,j] = f["u"][k][energy_filter[j]]
-				   end
-		  	end
-		end
+		update_energy_pd_mismatch_yesterday[i,j] = sol1((i-1)*update)[energy_filter[j]]
 	end
- end
+end
+update_energy_pd_mismatch_d_control = zeros(n_updates_per_day*num_days+1,N)
+for i=2:n_updates_per_day*num_days+1
+	for j = 1:N
+		update_energy_pd_mismatch_d_control[i,j] = sol1((i-1)*update)[energy_filter[j]]
+	end
+end
 
 
- update_energy_pd_mismatch_d_control = zeros(n_updates_per_day*num_days+1,N)
- for i=2:n_updates_per_day*num_days+1
- 	for j = 1:N
- 		for k in 1:length(f["t"])
- 		  	if (f["t"][k] ==(i-1)*update)
- 					if (f["u"][k][energy_filter[j]] != 0)
- 				       update_energy_pd_mismatch_d_control[i,j] = f["u"][k][energy_filter[j]]
- 				   end
- 		  	end
- 		end
- 	end
-  end
+
+
+#for i=1:n_updates_per_day*num_days+1
+#	for j = 1:N
+#		for k in 1:length(f["t"])
+#		  	if (f["t"][k] ==(i-1)*update)
+#					if (f["u"][k][energy_filter[j]] != 0)
+#				       update_energy[i,j] = f["u"][k][energy_filter[j]]
+#				   end
+#		  	end
+#		end
+#	end
+# end
+
+
+# update_energy_pd_mismatch_d_control = zeros(n_updates_per_day*num_days+1,N)
+# for i=2:n_updates_per_day*num_days+1
+# 	for j = 1:N
+# 		for k in 1:length(f["t"])
+# 		  	if (f["t"][k] ==(i-1)*update)
+# 					if (f["u"][k][energy_filter[j]] != 0)
+# 				       update_energy_pd_mismatch_d_control[i,j] = f["u"][k][energy_filter[j]]
+#				   end
+# 		  	end
+# 		end
+# 	end
+# end
 
 
  update_energy_pd =zeros(n_updates_per_day*num_days+1,N)
  for i=1:n_updates_per_day*num_days+1
  	for j = 1:N
- 		update_energy_pd[i,j] = (2*update_energy_pd_mismatch_yesterday[i,j])-update_energy_pd_mismatch_d_control[i,j]
+ 		update_energy_pd[i,j] = ((1+(1/3))*update_energy_pd_mismatch_yesterday[i,j])-update_energy_pd_mismatch_d_control[i,j]
  	end
  end
 
@@ -255,7 +268,7 @@ end
 ILC_power_pd = zeros(num_days+2,n_updates_per_day,N)
 for j = 1:N
 	ILC_power_pd[2,:,j] = Q*(zeros(n_updates_per_day,1) +  kappa*update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]
-	+kappa*(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j]))
+	+kappa*(1/3)*(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j]))
 end
 
 
@@ -271,7 +284,7 @@ for i=2:num_days
 	for j = 1:N
 
 		ILC_power_pd[i+1,:,j] = Q*(ILC_power_pd[i,:,j] +  kappa*update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]
-		+kappa*(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]))
+		+kappa*(1/3)*(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]))
 
 		norm_energy_d_pd[i,j] = norm(update_energy_pd[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/update
 	end
@@ -316,7 +329,7 @@ dd = t->((periodic_demand(t) .+ residual_demand(t)))
 Plots.plot(0:num_days*l_day, t -> dd(t)[node], alpha=0.2,legend=false, label = latexstring("P^d"),linewidth=3,legendfontsize=10, linestyle=:dot)
 
 
-plot!(1:update:24*num_days*3600,(update_energy_pd_mismatch_yesterday[1:num_days*n_updates_per_day,node])./update, label=latexstring("y_{pd}"),linewidth=0.3, color ="yellow" ,  w = 2,legend=false,legendfontsize=10,legendfontrotation=10) #, linestyle=:dash)
+plot!(1:update:24*num_days*3600,(update_energy_pd[1:num_days*n_updates_per_day,node])./update, label=latexstring("y_{pd}"),linewidth=0.3, color ="yellow" ,  w = 2,legend=false,legendfontsize=10,legendfontrotation=10) #, linestyle=:dash)
 plot!(1:update:24*num_days*3600,update_energy[1:num_days*n_updates_per_day,node]./update, label=latexstring("y_{p}"),linewidth=0.3,color="red",linestyle=:solid, w = 2)
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node_pd[1:num_days*n_updates_per_day], label=latexstring("\$u_{pd}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),w=2, ytickfontsize=14,

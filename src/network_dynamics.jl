@@ -135,7 +135,8 @@ function (hu::Updating)(integrator)
 	updating_cycle  = Int(floor(mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1))
 	last_update = Int(floor(mod(updating_cycle-2, n_updates_per_day) + 1))
 	last_update_d = Int(floor(mod(last_update-2, n_updates_per_day) + 1))
-	#last_update_2d = Int(floor(mod(last_update_d-2, n_updates_per_day) + 1))
+	last_update_2d = Int(floor(mod(last_update_d-2, n_updates_per_day) + 1))
+	last_update_3d = Int(floor(mod(last_update_2d-2, n_updates_per_day) + 1))
 
 
 	power_idx = 3*integrator.p.N+1:4*integrator.p.N
@@ -145,7 +146,7 @@ function (hu::Updating)(integrator)
 	power_abs_idx = 4*integrator.p.N+1:5*integrator.p.N
 
 	integrator.p.hl.mismatch_yesterday[last_update,:] .= integrator.u[power_idx]
-	integrator.p.hl.mismatch_d_control[last_update_d,:] .= integrator.u[power_idx]
+	integrator.p.hl.mismatch_d_control[last_update_3d,:] .= integrator.u[power_idx]
 	integrator.u[power_idx] .= 0.
 	integrator.u[power_idx_d] .= 0.
 	integrator.u[power_abs_idx] .= 0.
@@ -156,7 +157,7 @@ function (hu::Updating)(integrator)
 end
 function DailyUpdate_PD(integrator)
 	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday
-    +integrator.p.hl.kappa *(integrator.p.hl.mismatch_yesterday -integrator.p.hl.mismatch_d_control ) )
+    +integrator.p.hl.kappa *(1/3)*(integrator.p.hl.mismatch_yesterday -integrator.p.hl.mismatch_d_control ) )
 	nothing
 end
 function DailyUpdate_X(integrator)
