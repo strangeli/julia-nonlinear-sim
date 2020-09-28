@@ -128,7 +128,7 @@ begin
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
 	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(),update),
-						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
+						 PeriodicCallback(network_dynamics.DailyUpdate_PD, l_day)))
 end
 sol1 = solve(ode_tl1, Rodas4())
 
@@ -155,12 +155,12 @@ using JLD2 , Pandas
 #                               PLOTTING                             #
 ###################''''''''''''''''''''''''###################################################
 using Plots
-update_energy= zeros(n_updates_per_day*num_days+1,N)
-for i=1:n_updates_per_day*num_days+1
-	for j = 1:N
-		update_energy[i,j] = sol1((i-1)*update)[energy_filter[j]]
-	end
-end
+#update_energy= zeros(n_updates_per_day*num_days+1,N)
+#for i=1:n_updates_per_day*num_days+1
+#	for j = 1:N
+#		update_energy[i,j] = sol1((i-1)*update)[energy_filter[j]]
+#	end
+#end
 
 
 update_energy_pd_mismatch_yesterday = zeros(n_updates_per_day*num_days+1,N)
@@ -178,18 +178,19 @@ end
 
 
 
+update_energy= zeros(n_updates_per_day*num_days+1,N)
 
-#for i=1:n_updates_per_day*num_days+1
-#	for j = 1:N
-#		for k in 1:length(f["t"])
-#		  	if (f["t"][k] ==(i-1)*update)
-#					if (f["u"][k][energy_filter[j]] != 0)
-#				       update_energy[i,j] = f["u"][k][energy_filter[j]]
-#				   end
-#		  	end
-#		end
-#	end
-# end
+for i=1:n_updates_per_day*num_days+1
+	for j = 1:N
+		for k in 1:length(f["t"])
+		  	if (f["t"][k] ==(i-1)*update)
+					if (f["u"][k][energy_filter[j]] != 0)
+				       update_energy[i,j] = f["u"][k][energy_filter[j]]
+				   end
+		  	end
+		end
+	end
+ end
 
 
 # update_energy_pd_mismatch_d_control = zeros(n_updates_per_day*num_days+1,N)
@@ -209,7 +210,7 @@ end
  update_energy_pd =zeros(n_updates_per_day*num_days+1,N)
  for i=1:n_updates_per_day*num_days+1
  	for j = 1:N
- 		update_energy_pd[i,j] = ((1+(1/3))*update_energy_pd_mismatch_yesterday[i,j])-update_energy_pd_mismatch_d_control[i,j]
+ 		update_energy_pd[i,j] = ((1+(1))*update_energy_pd_mismatch_yesterday[i,j])-update_energy_pd_mismatch_d_control[i,j]
  	end
  end
 
@@ -268,7 +269,7 @@ end
 ILC_power_pd = zeros(num_days+2,n_updates_per_day,N)
 for j = 1:N
 	ILC_power_pd[2,:,j] = Q*(zeros(n_updates_per_day,1) +  kappa*update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]
-	+kappa*(1/3)*(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j]))
+	+kappa*(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j]))
 end
 
 
@@ -284,7 +285,7 @@ for i=2:num_days
 	for j = 1:N
 
 		ILC_power_pd[i+1,:,j] = Q*(ILC_power_pd[i,:,j] +  kappa*update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]
-		+kappa*(1/3)*(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]))
+		+kappa*(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]))
 
 		norm_energy_d_pd[i,j] = norm(update_energy_pd[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/update
 	end

@@ -229,7 +229,7 @@ _compound_pars.coupling = 6 .* diagm(0=>ones(ne(graph_lst[1])))
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
 	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(),update ),
-						 PeriodicCallback(network_dynamics.DailyUpdate_PD, l_day)))
+						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
 end
 
 
@@ -252,19 +252,21 @@ if isdir("$dir/solutions/$(date)") == false
 	mkdir("$dir/solutions/$(date)")
 end
 
-jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_pd.jld2", true, true, true, IOStream) do file
+jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_p.jld2", true, true, true, IOStream) do file
 		file["u"] = res.u
 end
-f = jldopen("$dir/solutions/2020-09-26/sim_non_linear_kappa_p.jld2", "r")  # open read-only (default)
+f = jldopen("$dir/solutions/2020-09-28/sim_non_linear_kappa_p.jld2", "r")  # open read-only (default)
+#f = jldopen("$dir/solutions/2020-09-28/sim_non_linear_kappa_pd.jld2", "r")  # open read-only (default)
+
 kappa = [p[6] for p in res.u]
 update_energy = [p[10] for p in res.u]
-norm_energy_d = [p[13] for p in res.u]
+norm_energy_d = [p[11] for p in res.u]
 update = [p[12] for p in res.u]
 
 #update_energy_pd_mismatch_yesterday= [p[10] for p in f["u"]]
 #update_energy_pd_mismatch_d_control= [p[13] for p in f["u"]]
 #update_energy_pd=[p[14] for p in f["u"]]
-norm_energy_d_pd=[p[11] for p in f["u"]]
+norm_energy_d_pd = [p[13] for p in f["u"]]
 
 
 
@@ -320,19 +322,47 @@ plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth
 Plots.savefig("$dir/20200319_kappa_Y6_hetero.png")
 
 
+using LaTeXStrings
+Plots.plot()
+Plots.plot(mean(norm_energy_d_pd[1],dims=2),legend=:topright, label = L"\kappa_{pd} = 0\, h^{-1}", ytickfontsize=14,
+               xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
+    		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))
+
+plot!(mean(norm_energy_d[1],dims=2), label= L"\kappa = 0\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
+plot!(mean(norm_energy_d_pd[2],dims=2), label= L"\kappa_{pd} = 0.25\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+plot!(mean(norm_energy_d[2],dims=2), label= L"\kappa = 0.25\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
+plot!(mean(norm_energy_d_pd[3],dims=2), label= L"\kappa_{pd} = 0.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
+
+plot!(mean(norm_energy_d[3],dims=2), label= L"\kappa = 0.5\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
+plot!(mean(norm_energy_d_pd[4],dims=2),label=  L"\kappa_{pd} = 0.75\, h^{-1}", linewidth = 3, linestyle=:dash)
+plot!(mean(norm_energy_d[4],dims=2), label= L"\kappa = 0.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
+plot!(mean(norm_energy_d_pd[5],dims=2), label= L"\kappa_{pd} = 1\, h^{-1}", linewidth = 3, linestyle=:solid)
+plot!(mean(norm_energy_d[5],dims=2), label= L"\kappa = 1\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
+#title!("Error norm")
+Plots.savefig("$dir/20200319_kappa_Y6_hetero_pd.png")
 
 using LaTeXStrings
+Plots.plot()
+ # ylims=(0,1e6)
+plot!(mean(norm_energy_d_pd[5],dims=2),label=   L"\kappa = 1.25\, h^{-1}", linewidth = 3, linestyle=:dash)
+plot!(mean(norm_energy_d[5],dims=2),label=   L"\kappa = 1.25\, h^{-1}", linewidth = 3, linestyle=:dash)
+plot!(mean(norm_energy_d_pd[6],dims=2),label=   L"\kappa = 1.25\, h^{-1}", linewidth = 3, linestyle=:dash)
+plot!(mean(norm_energy_d[6],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
 
-Plots.plot(mean(norm_energy_d[5],dims=2),legend=:topright, label = L"\kappa = 1\, h^{-1}", ytickfontsize=14,
-               xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
-    		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))  # ylims=(0,1e6)
-plot!(mean(norm_energy_d[6],dims=2),label=   L"\kappa = 1.25\, h^{-1}", linewidth = 3, linestyle=:dash)
+plot!(mean(norm_energy_d_pd[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
 plot!(mean(norm_energy_d[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
+
+plot!(mean(norm_energy_d_pd[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
 plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
 
 #plot!(mean(norm_energy_d[9],dims=2), label= L"\kappa = 2 h^{-1}", linewidth = 3, linestyle=:dot)
 #title!("Error norm")
-Plots.savefig("$dir/20200319_kappa2_Y6_hetero.png")
+Plots.savefig("$dir/20200319_kappa2_Y6_hetero_pd.png")
 
 
 
