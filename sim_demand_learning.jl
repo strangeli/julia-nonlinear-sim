@@ -135,16 +135,16 @@ sol1 = solve(ode_tl1, Rodas4())
 using Dates , GraphIO
 date = Dates.Date(Dates.now())
 
-if isdir("$dir/solutions/$(date)") == false
-	mkdir("$dir/solutions/$(date)")
-end
+#if isdir("$dir/solutions/$(date)") == false
+#	mkdir("$dir/solutions/$(date)")
+#end
 
-jldopen("$dir/solutions/2020-10-02/sim_demand_learning_pd.jld2", true, true, true, IOStream) do file
-	file["t"] = sol1.t
-    file["u"] = sol1.u
-end
+#jldopen("$dir/solutions/2020-10-02/sim_demand_learning_p.jld2", true, true, true, IOStream) do file
+#	file["t"] = sol1.t
+#    file["u"] = sol1.u
+#end
 
-f = jldopen("$dir/solutions/2020-09-26/sim_demand_learning_p.jld2", "r")
+f = jldopen("$dir/solutions/2020-10-02/sim_demand_learning_p.jld2", "r")
 
 
 using CSV
@@ -478,7 +478,7 @@ plot!(1:update:num_days*24*3600,  ILC_power_update_mean_sum[1:num_days*n_updates
 
 
 #ylims!(-2,3)
-title!("ILC_power_update_mean_sum")
+title!("ILC_power update mean sum")
 savefig(psum,"$dir/plots/demand_seconds_Y$(coupfact)_sum_hetero_update_half_hour.png")
 
 
