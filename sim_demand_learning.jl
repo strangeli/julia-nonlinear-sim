@@ -43,8 +43,8 @@ begin
 	l_minute = 60 # DemCurve.l_minute
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=52,T_inv=1/0.05,kI=10)
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=525,T_inv=1/0.05,kI=0.005)
-	low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner=N),kI=repeat([0.005], inner=N)) # different for each node, change array
-	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=[1/5.; 1/4.8; 1/4.1; 1/4.8],kP= [400.; 110.; 100.; 200.],T_inv=[1/0.04; 1/0.045; 1/0.047; 1/0.043],kI=[0.05; 0.004; 0.05; 0.001]) # different for each node, change array
+	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner=N),kI=repeat([0.005], inner=N)) # different for each node, change array
+	low_layer_control = system_structs.LeakyIntegratorPars(M_inv=[1/5.; .8; .1; .8],kP= [400.; 110.; 100.; 200.],T_inv=[1/0.04; 1/0.045; 1/0.047; 1/0.043],kI=[0.05; 0.004; 0.05; 0.001]) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=[0.1; 10; 100; 1000],T_inv=repeat([1/0.05], inner=N),kI=repeat([0.005], inner=N)) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=[1/0.05; 1/0.5; 1/5; 1/50],kI=repeat([0.005], inner=N)) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=[0.005; 0.5; 5; 500]) # different for each node, change array
@@ -135,14 +135,14 @@ sol1 = solve(ode_tl1, Rodas4())
 using Dates , GraphIO
 date = Dates.Date(Dates.now())
 
-#if isdir("$dir/solutions/$(date)") == false
-#	mkdir("$dir/solutions/$(date)")
-#end
+if isdir("$dir/solutions/$(date)") == false
+	mkdir("$dir/solutions/$(date)")
+end
 
-#jldopen("$dir/solutions/2020-09-26/sim_demand_learning_p.jld2", true, true, true, IOStream) do file
-#	file["t"] = sol1.t
-#    file["u"] = sol1.u
-#end
+jldopen("$dir/solutions/2020-10-02/sim_demand_learning_pd.jld2", true, true, true, IOStream) do file
+	file["t"] = sol1.t
+    file["u"] = sol1.u
+end
 
 f = jldopen("$dir/solutions/2020-09-26/sim_demand_learning_p.jld2", "r")
 
@@ -210,7 +210,7 @@ for i=1:n_updates_per_day*num_days+1
  update_energy_pd =zeros(n_updates_per_day*num_days+1,N)
  for i=1:n_updates_per_day*num_days+1
  	for j = 1:N
- 		update_energy_pd[i,j] = ((1+(1))*update_energy_pd_mismatch_yesterday[i,j])-update_energy_pd_mismatch_d_control[i,j]
+ 		update_energy_pd[i,j] =update_energy_pd_mismatch_yesterday[i,j]+ (1/1)*(update_energy_pd_mismatch_yesterday[i,j]-update_energy_pd_mismatch_d_control[i,j])
  	end
  end
 

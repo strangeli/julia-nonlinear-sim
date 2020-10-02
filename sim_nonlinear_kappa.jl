@@ -229,7 +229,7 @@ _compound_pars.coupling = 6 .* diagm(0=>ones(ne(graph_lst[1])))
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
 	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(),update ),
-						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
+						 PeriodicCallback(network_dynamics.DailyUpdate_PD, l_day)))
 end
 
 
@@ -252,22 +252,30 @@ if isdir("$dir/solutions/$(date)") == false
 	mkdir("$dir/solutions/$(date)")
 end
 
-jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_p.jld2", true, true, true, IOStream) do file
+jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_pd_4d.jld2", true, true, true, IOStream) do file
 		file["u"] = res.u
 end
-f = jldopen("$dir/solutions/2020-09-28/sim_non_linear_kappa_p.jld2", "r")  # open read-only (default)
+f = jldopen("$dir/solutions/2020-10-02/sim_non_linear_kappa_pd_2d.jld2", "r")
+#f = jldopen("$dir/solutions/2020-10-02/sim_non_linear_kappa_pd_4d.jld2", "r")
+#f = jldopen("$dir/solutions/2020-10-02/sim_non_linear_kappa_p.jld2", "r")
+#f = jldopen("$dir/solutions/2020-10-02/sim_non_linear_kappa_pd_d.jld2", "r")
+
+
+
+
+#f = jldopen("$dir/solutions/2020-09-28/sim_non_linear_kappa_p.jld2", "r")  # open read-only (default)
 #f = jldopen("$dir/solutions/2020-09-28/sim_non_linear_kappa_pd.jld2", "r")  # open read-only (default)
 
 kappa = [p[6] for p in res.u]
 update_energy = [p[10] for p in res.u]
-norm_energy_d = [p[11] for p in res.u]
+#norm_energy_d = [p[11] for p in res.u]
 update = [p[12] for p in res.u]
+norm_energy_d_pd = [p[13] for p in res.u]
 
 #update_energy_pd_mismatch_yesterday= [p[10] for p in f["u"]]
 #update_energy_pd_mismatch_d_control= [p[13] for p in f["u"]]
 #update_energy_pd=[p[14] for p in f["u"]]
-norm_energy_d_pd = [p[13] for p in f["u"]]
-
+norm_energy_d = [p[11] for p in f["u"]]
 
 
 
@@ -284,15 +292,11 @@ Plots.plot!(mean(norm_energy_d_pd[5],dims=2),c=:red,legend=:topright, label =  "
                xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
     		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))
 Plots.plot!(mean(norm_energy_d[5],dims=2),linestyle=:dashdotdot,c=:blue, linewidth = 3,label = "p")
-Plots.plot!(mean(norm_energy_d_pd[5],dims=2),linestyle=:dashdotdot,c=:blue, linewidth = 3,label = "p")
 
 Plots.plot!(mean(norm_energy_d_pd[6],dims=2),c=:red,xlims = (1,5), label = "pd", linewidth = 3)
 Plots.plot!(mean(norm_energy_d[6],dims=2),linestyle=:dashdotdot,c=:blue,xlims = (1,5), label = "p", linewidth = 3)
 
-Plots.savefig("norm_energy_d.png")
-Plots.plot()
-Plots.plot!(norm_energy_d_pd)
-Plots.plot!(norm_energy_d)
+Plots.savefig("Comparision between p and pd(4d) controller.png")
 
 Plots.plot()
 x = view(update, 1:4)
@@ -303,13 +307,18 @@ y = view(kappa, 1:4)
 #		@show norm_energy_d_mean[row]=(mean(norm_energy_d[row]))
 #end
 
-z=view((mean(norm_energy_d_pd)),1:4,1:4)
+z=view((mean(norm_energy_d)),1:4,1:4)
+#Plots.plot!((norm_energy_d[1][:,1]))
+#Plots.plot!((norm_energy_d_pd[1][:,1]))
+
+
+
 Plots.heatmap(x, y , z , ztickfontsize=14, colorbar=true,xlims = (720,2880),ylims = (0.0,0.00026041666666666667),
                xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm, zlabel="Legend Title",
-    		   legendfontsize=8, linewidth=3, name = "ht1",legend=:topright,    heatmap_legend_param = list(
-        title = "rnorm"),
-			   xaxis=("update",font(14)), yaxis=("kappa",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
+    		   legendfontsize=8, linewidth=3, name = "ht1",legend=:topright, yformatter = :scientific,
+			   xaxis=("Update [s]",font(14)), yaxis=("Kappa [ Ws ]",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
 
+#title!("Normed power")
 Plots.savefig("heatmap.png")
 using LaTeXStrings
 
@@ -344,7 +353,7 @@ plot!(mean(norm_energy_d_pd[5],dims=2), label= L"\kappa_{pd} = 1\, h^{-1}", line
 plot!(mean(norm_energy_d[5],dims=2), label= L"\kappa = 1\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
 
 #title!("Error norm")
-Plots.savefig("$dir/20200319_kappa_Y6_hetero_pd.png")
+Plots.savefig("$dir/20200319_kappa_Y6_hetero_pd_p_k1.png")
 
 using LaTeXStrings
 Plots.plot()
@@ -357,8 +366,8 @@ plot!(mean(norm_energy_d[6],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth 
 plot!(mean(norm_energy_d_pd[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
 plot!(mean(norm_energy_d[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
 
-plot!(mean(norm_energy_d_pd[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
-plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+plot!(mean(norm_energy_d_pd[15],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+plot!(mean(norm_energy_d[15],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
 
 #plot!(mean(norm_energy_d[9],dims=2), label= L"\kappa = 2 h^{-1}", linewidth = 3, linestyle=:dot)
 #title!("Error norm")

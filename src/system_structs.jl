@@ -128,7 +128,7 @@ module system_structs
 		periodic_infeed = t -> zeros(N)
 		peak_demand = rand(N)
 		periodic_demand= t -> zeros(N)#peak_demand .* abs(sin(pi * t/24.))
-		fluctuating_infeed = t -> zeros(N)
+		fluctuating_infeed = t -> zeros(N)LeakyIntegratorPars
 		residual_demand= t -> zeros(N)
 
 
@@ -208,7 +208,7 @@ module system_structs
 
 		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
 			callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(), prob.p.hl.update ),
-								 PeriodicCallback(network_dynamics.DailyUpdate_X, 3600*24)))
+								 PeriodicCallback(network_dynamics.DailyUpdate_PD, 3600*24)))
 		#saved_values = SavedValues(Float64, Vector{Float64})
 		#cb = SavingCallback((u,t,integrator)->(tr(u),norm(u)), saved_values)
 
@@ -245,14 +245,21 @@ module system_structs
  			end
  		end
 
+		update_energy_pd = zeros(n_updates_per_day*num_days,N)
+		for i=2:n_updates_per_day*num_days
+			for j = 1:N
+				update_energy_pd[i,j] = update_energy[i,j]+(1/1)*(update_energy[i,j]-update_energy_pd_mismatch_d_control[i,j])
+			end
+		end
+
+		##P_type
 		ILC_power = zeros(num_days,n_updates_per_day,N)
 		norm_energy_d = zeros(num_days,N)
 		for j = 1:N
-			#norm_energy_d[1,j] = norm(update_energy[1:n_updates_per_day,j])
 			norm_energy_d[1,j] = norm(update_energy[1:n_updates_per_day,j])/sol.prob.p.hl.update
 		end
 		sol.prob.p.hl.Q = Toeplitz(Q1[1001:1001+n_updates_per_day-1],Q1[1001:1001+n_updates_per_day-1]);
-		ILC_power_pd = zeros(num_days,n_updates_per_day,N)
+
 		for i=2:num_days
 			for j = 1:N
 				ILC_power[i,:,j] =sol.prob.p.hl.Q* (ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]))
@@ -262,23 +269,17 @@ module system_structs
 			end
 		end
 
-
-		update_energy_pd = zeros(n_updates_per_day*num_days,N)
-		for i=2:n_updates_per_day*num_days
-			for j = 1:N
-				update_energy_pd[i,j] = 2*(update_energy[i,j])-update_energy_pd_mismatch_d_control[i,j]
-			end
-		end
-
+		##PD_type
+		ILC_power_pd = zeros(num_days,n_updates_per_day,N)
 		norm_energy_d_pd = zeros(num_days,N)
 		for j = 1:N
-		   norm_energy_d_pd[1,j] = norm(update_energy_pd[1:n_updates_per_day,j])/sol.prob.p.hl.update
+			norm_energy_d_pd[1,j] = norm(update_energy_pd[1:n_updates_per_day,j])/sol.prob.p.hl.update
 		end
 
 		for i=2:num_days
 			for j = 1:N
 				ILC_power_pd[i,:,j] =sol.prob.p.hl.Q* (ILC_power_pd[i-1,:,j] +  sol.prob.p.hl.kappa*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j])
-				+  sol.prob.p.hl.kappa*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]-update_energy_pd_mismatch_d_control[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]))
+				+  sol.prob.p.hl.kappa*(1/1)*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]-update_energy_pd_mismatch_d_control[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]))
 			end
 			for j = 1:N
 				norm_energy_d_pd[i,j] = norm(update_energy_pd[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/sol.prob.p.hl.update
