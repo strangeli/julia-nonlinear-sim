@@ -229,7 +229,7 @@ _compound_pars.coupling = 6 .* diagm(0=>ones(ne(graph_lst[1])))
 	tspan = (0., num_days * l_day)
 	ode_tl1 = ODEProblem(network_dynamics.ACtoymodel!, ic, tspan, compound_pars,
 	callback=CallbackSet(PeriodicCallback(network_dynamics.Updating(),update ),
-						 PeriodicCallback(network_dynamics.DailyUpdate_PD, l_day)))
+						 PeriodicCallback(network_dynamics.DailyUpdate_X, l_day)))
 end
 
 
@@ -252,10 +252,12 @@ if isdir("$dir/solutions/$(date)") == false
 	mkdir("$dir/solutions/$(date)")
 end
 
-jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_pd_4d.jld2", true, true, true, IOStream) do file
+jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_p.jld2", true, true, true, IOStream) do file
 		file["u"] = res.u
 end
-f = jldopen("$dir/solutions/2020-10-02/sim_non_linear_kappa_pd_2d.jld2", "r")
+f = jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_p.jld2", "r")
+
+#f = jldopen("$dir/solutions/2020-10-02/sim_non_linear_kappa_pd_2d.jld2", "r")
 #f = jldopen("$dir/solutions/2020-10-02/sim_non_linear_kappa_pd_4d.jld2", "r")
 #f = jldopen("$dir/solutions/2020-10-02/sim_non_linear_kappa_p.jld2", "r")
 #f = jldopen("$dir/solutions/2020-10-02/sim_non_linear_kappa_pd_d.jld2", "r")
@@ -301,25 +303,68 @@ Plots.savefig("Comparision between p and pd(4d) controller.png")
 Plots.plot()
 x = view(update, 1:4)
 y = view(kappa, 1:4)
+z=view((mean(norm_energy_d[1],dims=4)),1:20,1:20)
+x=update
+y=kappa
 
-#norm_energy_d_mean=zeros(length(update_lst))
-#for row in 1:length(update_lst)
-#		@show norm_energy_d_mean[row]=(mean(norm_energy_d[row]))
-#end
 
-z=view((mean(norm_energy_d)),1:4,1:4)
+norm_energy_d = zeros(num_days,N)
+
+
+
+for j = 1:N
+	norm_energy_d[1,j] = norm(update_energy[1:n_updates_per_day,j])
+end
+for i=2:num_days
+	for j = 1:N
+		ILC_power[i+1,:,j] = Q*(ILC_power[i,:,j] +  kappa*update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+		norm_energy_d[i,j] = norm(update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/update
+	end
+end
+
+
+
+
+
+
+for row in 1:length(kappa_lst)
+		 kappa[row]=(kappa_lst[row] * update[row])
+end
+y=kappa
+#z=view(mean(norm_energy_d_pd),length(x),length(y))
+z=[mean(norm_energy_d_pd[p]) for p in [1:36]]
+
+mean_norm_energy_d_pd=zeros(36)
+for row in 1:36
+		 mean_norm_energy_d_pd[row]=mean(norm_energy_d_pd[row])
+end
+z=mean_norm_energy_d_pd
 #Plots.plot!((norm_energy_d[1][:,1]))
 #Plots.plot!((norm_energy_d_pd[1][:,1]))
+Plots.plot(collect(update), mean(norm_energy_d_pd[8],dims=2) ,label=["omega_max"])
 
 
-
-Plots.heatmap(x, y , z , ztickfontsize=14, colorbar=true,xlims = (720,2880),ylims = (0.0,0.00026041666666666667),
+Plots.heatmap(x, y , z , ztickfontsize=14, colorbar=true,
                xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm, zlabel="Legend Title",
     		   legendfontsize=8, linewidth=3, name = "ht1",legend=:topright, yformatter = :scientific,
 			   xaxis=("Update [s]",font(14)), yaxis=("Kappa [ Ws ]",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
 
 #title!("Normed power")
 Plots.savefig("heatmap.png")
+
+
+
+p1 = contour(x,y, reshape(mean(norm_energy_d_pd),length(x), length(y)), fill = true,title_location=:right, thickness_scaling=1.1, dpi=150,#colorbar_title=L"\omega_{max}",#,ylims=(-100,2100),
+		   ytickfontsize=12,
+		   xtickfontsize=12,
+		   guidefontsize=12, top_margin=5Plots.mm, left_margin=5Plots.mm, bottom_margin=5Plots.mm, right_margin=8Plots.mm) # ,clims=(0,0.5)xlabel!("k_P")
+		  # title!(L"\omega_{max}")
+
+
+
+
+
+
 using LaTeXStrings
 
 Plots.plot(mean(norm_energy_d[5],dims=2),legend=:topright, label = L"\kappa = 1\, h^{-1}", ytickfontsize=14,

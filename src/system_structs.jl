@@ -196,7 +196,7 @@ module system_structs
 
 		#prob.p.hl.update = update
 		number= mod(batch,6)==0 ? 6 : mod(batch,6)
-		prob.p.hl.kappa = kappa_lst[batch]
+		prob.p.hl.kappa = kappa_lst[batch]/update_lst[batch]
 		#prob.p.hl.kappa = kappa_lst
 
 		prob.p.hl.update = update_lst[batch]
@@ -232,18 +232,17 @@ module system_structs
 		#@show sol.prob.p.hl.mismatch_d_control=sol.prob.hl.mismatch_yesterday
 
 		update_energy = zeros(n_updates_per_day*num_days,N)
+		update_energy_pd_mismatch_d_control = zeros(n_updates_per_day*num_days+1,N)
+
 		for i=1:n_updates_per_day*num_days
 			for j = 1:N
 				update_energy[i,j] = sol(i*sol.prob.p.hl.update)[energy_filter[j]]
+				update_energy_pd_mismatch_d_control[i+1,j] = update_energy[i,j]
+
 			end
 		end
 
-		update_energy_pd_mismatch_d_control = zeros(n_updates_per_day*num_days,N)
- 		for i=2:n_updates_per_day*num_days
- 			for j = 1:N
- 				@show update_energy_pd_mismatch_d_control[i,j] = sol(i*sol.prob.p.hl.update)[energy_filter[j]]
- 			end
- 		end
+
 
 		update_energy_pd = zeros(n_updates_per_day*num_days,N)
 		for i=2:n_updates_per_day*num_days
