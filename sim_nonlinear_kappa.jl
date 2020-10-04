@@ -243,10 +243,10 @@ if isdir("$dir/solutions/$(date)") == false
 	mkdir("$dir/solutions/$(date)")
 end
 
-jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_p_update.jld2", true, true, true, IOStream) do file
-		file["u"] = res.u
-end
-f = jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_pd.jld2", "r")
+#jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_p_update.jld2", true, true, true, IOStream) do file
+#		file["u"] = res.u
+#end
+f = jldopen("$dir/solutions/2020-10-04/sim_non_linear_kappa_pd.jld2", "r")
 
 
 kappa = [p[6] for p in res.u]
@@ -269,15 +269,25 @@ using Plots
 using Vega
 using Plotly
 Plots.plot()
-Plots.plot!(mean(norm_energy_d_pd[1],dims=2),c=:red,legend=:topright, label = L"\kappa_{pd} = 1.5\, h^{-1}", ytickfontsize=14,
+Plots.plot!(mean(norm_energy_d_pd[1],dims=2),c=:red,legend=:outertopright, label = L"\kappa_{pd} = 0\, h^{-1}", ytickfontsize=14,
                xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
     		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))
-Plots.plot!(mean(norm_energy_d[1],dims=2),linestyle=:dashdotdot,c=:blue, linewidth = 3,label = L"\kappa_{p} = 1.5\, h^{-1}")
+Plots.plot!(mean(norm_energy_d[1],dims=2),linestyle=:dashdotdot,c=:blue, linewidth = 3,label = L"\kappa_{p} = 0\, h^{-1}")
+plot!(mean(norm_energy_d_pd[2],dims=2), label= L"\kappa_{pd} = 0.25\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+plot!(mean(norm_energy_d[2],dims=2), label= L"\kappa = 0.25\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
 
-Plots.plot!(mean(norm_energy_d_pd[6],dims=2),c=:red,xlims = (1,5), label = L"\kappa_{pd} = 1.5\, h^{-1}", linewidth = 3)
-Plots.plot!(mean(norm_energy_d[6],dims=2),linestyle=:dashdotdot,c=:blue,xlims = (1,5), label = L"\kappa_{p} = 1.5\, h^{-1}", linewidth = 3)
+plot!(mean(norm_energy_d_pd[3],dims=2), label= L"\kappa_{pd} = 0.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
 
-Plots.savefig("Comparision between p and pd(4d) controller.png")
+plot!(mean(norm_energy_d[3],dims=2), label= L"\kappa = 0.5\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
+
+plot!(mean(norm_energy_d_pd[4],dims=2),label=  L"\kappa_{pd} = 0.75\, h^{-1}", linewidth = 3, linestyle=:dash)
+plot!(mean(norm_energy_d[4],dims=2), label= L"\kappa = 0.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
+plot!(mean(norm_energy_d_pd[5],dims=2), label= L"\kappa_{pd} = 1\, h^{-1}", linewidth = 3, linestyle=:solid)
+plot!(mean(norm_energy_d[5],dims=2), label= L"\kappa = 1\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
+Plots.savefig("Comparision between p and pd 0 , 0,25 and 0,5 type.png")
 
 Plots.plot()
 x=update_lst_s= (1/5. : 1/5. : 6/5. ) #	update_lst_s= 60.*(12. : 12. : 72. )
@@ -286,8 +296,8 @@ mean_norm_energy_d=zeros(36)
 mean_norm_energy_d_pd=zeros(36)
 
 for row in 1:length(norm_energy_d)
-	mean_norm_energy_d[row]=mean(norm_energy_d[row])
-	mean_norm_energy_d_pd[row]=mean(norm_energy_d_pd[row])
+	mean_norm_energy_d[row]=mean(norm_energy_d[row],dims=2)
+	mean_norm_energy_d_pd[row]=mean(norm_energy_d_pd[row],dims=2)
 
 end
 z=reshape(mean_norm_energy_d,length(update_lst_s), length(kappa_lst_s))
@@ -359,13 +369,32 @@ plot!(mean(norm_energy_d[6],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth 
 plot!(mean(norm_energy_d_pd[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
 plot!(mean(norm_energy_d[7],dims=2),label=  L"\kappa = 1.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
 
-plot!(mean(norm_energy_d_pd[36],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
-plot!(mean(norm_energy_d[36],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+plot!(mean(norm_energy_d_pd[36],dims=2),label=  L"\kappa_{pd} =0.000289\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+plot!(mean(norm_energy_d[36],dims=2),label=  L"\kappa_{p} = 0.000289\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
 
+Plots.savefig("$dir/Comparision between p and pd type.png")
 
 #plot!(mean(norm_energy_d[9],dims=2), label= L"\kappa = 2 h^{-1}", linewidth = 3, linestyle=:dot)
 #title!("Error norm")
 Plots.savefig("$dir/20200319_kappa2_Y6_hetero_pd.png")
+Plots.plot()
+Plots.plot!(mean(norm_energy_d_pd[1],dims=2),c=:red,legend=:outertopright, label = L"\kappa_{pd} = 0\, h^{-1}", ytickfontsize=14,
+               xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
+    		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error",font(14)))
+Plots.plot!(mean(norm_energy_d[1],dims=2),linestyle=:dashdotdot,c=:blue, linewidth = 3,label = L"\kappa_{p} = 0\, h^{-1}")
+plot!(mean(norm_energy_d_pd[2],dims=2), label= L"\kappa_{pd} = 0.25\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+plot!(mean(norm_energy_d[2],dims=2), label= L"\kappa = 0.25\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
+plot!(mean(norm_energy_d_pd[3],dims=2), label= L"\kappa_{pd} = 0.5\, h^{-1}", linewidth = 3, linestyle=:dashdot)
+
+plot!(mean(norm_energy_d[3],dims=2), label= L"\kappa = 0.5\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
+
+plot!(mean(norm_energy_d_pd[6],dims=2),label=  L"\kappa_{pd} = 0.75\, h^{-1}", linewidth = 3, linestyle=:dash)
+plot!(mean(norm_energy_d[6],dims=2), label= L"\kappa = 0.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+
+plot!(mean(norm_energy_d_pd[36],dims=2), label= L"\kappa_{pd} = 1\, h^{-1}", linewidth = 3, linestyle=:solid)
+plot!(mean(norm_energy_d[36],dims=2), label= L"\kappa = 1\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
 
 
 

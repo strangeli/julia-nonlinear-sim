@@ -140,10 +140,10 @@ if isdir("$dir/solutions/$(date)") == false
 	mkdir("$dir/solutions/$(date)")
 end
 
-#jldopen("$dir/solutions/$(date)/sim_demand_learning_p.jld2", true, true, true, IOStream) do file
-#	file["t"] = sol1.t
-#    file["u"] = sol1.u
-#end
+jldopen("$dir/solutions/$(date)/sim_demand_learning_pd.jld2", true, true, true, IOStream) do file
+	file["t"] = sol1.t
+    file["u"] = sol1.u
+end
 
 f = jldopen("$dir/solutions/2020-10-04/sim_demand_learning_p.jld2", "r")
 
@@ -224,7 +224,7 @@ for i=1:n_updates_per_day*num_days+1
 #Plots.plot!(update_energy_pd)
 using Images
 
-savefig("$dir/plots/demand_seconds_hetero_update_energy.png")
+#savefig("$dir/plots/demand_seconds_hetero_update_energy.png")
 
 
 
@@ -249,9 +249,15 @@ end
 
 
 ILC_power_pd = zeros(num_days+2,n_updates_per_day,N)
+error_pd = zeros(num_days+2,n_updates_per_day,N)
+error_pd_kappa = zeros(num_days+2,n_updates_per_day,N)
+
 for j = 1:N
 	ILC_power_pd[2,:,j] = Q*(zeros(n_updates_per_day,1) +  kappa*update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]
 	+kappa*(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j]))
+	error_pd[2,:,j] =(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j])
+	error_pd_kappa[2,:,j] =kappa*(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j])
+
 end
 
 norm_energy_d_pd = zeros(num_days,N)
@@ -265,14 +271,29 @@ for i=2:num_days
 
 		ILC_power_pd[i+1,:,j] = Q*(ILC_power_pd[i,:,j] +  kappa*update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]
 		+kappa*(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]))
+		error_pd =(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+		error_pd_kappa=kappa*(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
 
 		norm_energy_d_pd[i,j] = norm(update_energy_pd[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/update
 	end
 end
 
 Plots.plot()
-Plots.plot(ILC_power)
+Plots.plot(error_pd[])
 Plots.plot!(ILC_power_pd)
+
+Plots.plot(1:update:num_days*24*3600,  error_pd_kappa[1:num_days*n_updates_per_day], label=latexstring("\$u_{p}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
+			   xtickfontsize=18,w=2,
+			   legendfontsize=10,linewidth=3,legend=false, yaxis=("Error",font(14)),   xaxis=("day [c]",font(14)),margin=5Plots.mm)
+title!("The derivative estimate  with kappa")
+
+savefig("$dir/plots/error_pd_mit_kappa.png")
+
+Plots.plot(1:update:num_days*24*3600,  error_pd[1:num_days*n_updates_per_day], label=latexstring("\$u_{p}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
+			   	xtickfontsize=18,w=2,
+			   	legendfontsize=10,linewidth=3,legend=false, yaxis=("Error",font(14)),   xaxis=("day [c]",font(14)) ,margin=5Plots.mm)
+title!("The derivative estimate without kappa")
+savefig("$dir/plots/error_pd_ohne_kappa.png")
 
 
 #ILC_power_agg = maximum(mean(ILC_power.^2,dims=3),dims=2)
@@ -303,8 +324,6 @@ using LaTeXStrings
 # NODE WISE second-wisenode = 1
 node = 1
 p1 = Plots.plot()
-ILC_power_update_mean = vcat(mean(ILC_power,dims=3)[:,:,1]'...)
-
 ILC_power_update_mean_node = vcat(ILC_power[:,:,node]'...)
 ILC_power_update_mean_node_pd = vcat(ILC_power_pd[:,:,node]'...)
 dd = t->((periodic_demand(t) .+ residual_demand(t)))
@@ -374,48 +393,6 @@ plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_update
 ylims!(-0.7,1.5)
 title!(L"j = 3")
 savefig("$dir/plots/demand_seconds_Y$(coupfact)_node_$(node)_hetero_update_half_hour.png")
-
-
-
-node = 3
-p3 = Plots.plot()
-ILC_power_hourly_mean_node = vcat(ILC_power[:,:,node]'...)
-ILC_power_update_mean_node_pd = vcat(ILC_power_pd[:,:,node]'...)
-
-dd = t->((periodic_demand(t) .+ residual_demand(t)))
-Plots.plot(0:num_days*l_day, t -> dd(t)[node], alpha=0.2,legend=:false, label = latexstring("P^d"),linewidth=3,legendfontsize=10, linestyle=:dot)
-
-#plot!(1:update:24*num_days*3600,update_energy_pd[1:num_days*n_updates_per_day,node]./update, label=latexstring("y_{pd}"),linewidth=0.3, color ="yellow" ,  w = 2,legend=false,legendfontsize=10,legendfontrotation=10) #, linestyle=:dash)
-#plot!(1:update:24*num_days*3600,update_energy[1:num_days*n_updates_per_day,node]./update, label=latexstring("y_{p}"),linewidth=0.3,color="red",linestyle=:solid, w = 2)
-plot!(1:update:24*num_days*3600,update_energy_pd[1:num_days*n_updates_per_day,node]./update, label=latexstring("y_$node^{c,h}"),linewidth=3,color ="yellow" )#, linestyle=:dash)
-plot!(1:update:24*num_days*3600,update_energy[1:num_days*n_updates_per_day,node]./update, label=latexstring("y_$node^{c,h}"),linewidth=3,color ="red" )#, linestyle=:dash)
-
-#plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node_pd[1:num_days*n_updates_per_day], label=latexstring("\$u_{pd}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),w=2, ytickfontsize=14,
-#			   	xtickfontsize=18,
-#			   	legendfontsize=10, linewidth=3, yaxis=("normed power",font(14)),xaxis=("days [c]",font(14)),  seriescolor = :orchid,  margin=5Plots.mm)
-
-
-#plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node_pd[1:num_days*n_updates_per_day], label=latexstring("\$u_{pd}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),w=2, ytickfontsize=14,
-#				xtickfontsize=18, yticks=false,
-#				legendfontsize=10, linewidth=3,  seriescolor = :orchid,  margin=5Plots.mm)
-plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node_pd[1:num_days*n_updates_per_day], label=latexstring("\$u_$node^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
-				 xtickfontsize=18,
-				 legendfontsize=10, linewidth=3,xaxis=("days [c]",font(14)),yaxis=("normed power",font(14)),legend=false, lc =:orchid, margin=5Plots.mm)
-
-#plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_updates_per_day], label=latexstring("\$u_{p}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
-#			   xtickfontsize=18,w=2,
-#			   legendfontsize=10 ,linewidth=3, yaxis=("normed power",font(14)),xaxis=("days [c]",font(14)), seriescolor =:black, margin=5Plots.mm)
-#plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_updates_per_day], label=latexstring("\$u_{p}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
-#			   xtickfontsize=18,w=2,yticks=false,
-#			   legendfontsize=10 ,linewidth=3,  seriescolor =:black, margin=5Plots.mm)
-plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_updates_per_day], label=latexstring("\$u_$node^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
-			   	xtickfontsize=18,
-			   	legendfontsize=10, linewidth=3,xaxis=("days [c]",font(14)),yaxis=("normed power",font(14)),legend=false, lc =:black, margin=5Plots.mm)
-
-
-
-ylims!(-0.7,1.5)
-title!(L"j = 3")
 
 
 node = 4
