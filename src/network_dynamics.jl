@@ -131,8 +131,8 @@ PeriodicCallback function acting on the `integrator` that is called every simula
 """
 function (hu::Updating)(integrator)
 
-	n_updates_per_day = Int(floor(l_day/integrator.p.hl.update))
-	updating_cycle  = Int(floor(mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1))
+	@show n_updates_per_day = Int(floor(l_day/integrator.p.hl.update))
+	@show updating_cycle  = Int(floor(mod(round(Int, integrator.t/integrator.p.hl.update), n_updates_per_day) + 1))
 	last_update = Int(floor(mod(updating_cycle-2, n_updates_per_day) + 1))
 	last_update_d = Int(floor(mod(last_update-2, n_updates_per_day) + 1))
 	#last_update_2d = Int(floor(mod(last_update_d-2, n_updates_per_day) + 1))
@@ -156,12 +156,12 @@ function (hu::Updating)(integrator)
 	nothing
 end
 function DailyUpdate_PD(integrator)
-	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday
-    +integrator.p.hl.kappa *(1/1)*(integrator.p.hl.mismatch_yesterday -integrator.p.hl.mismatch_d_control ) )
+	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa *0.8* integrator.p.hl.mismatch_yesterday
+    +integrator.p.hl.kappa*(6/5)*0.1 *(integrator.p.hl.mismatch_yesterday -integrator.p.hl.mismatch_d_control ) )
 	nothing
 end
 function DailyUpdate_X(integrator)
-	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
+	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa *0.8* integrator.p.hl.mismatch_yesterday)
 	nothing
 end
 
