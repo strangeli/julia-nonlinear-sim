@@ -207,7 +207,7 @@ module system_structs
 
 		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
 			callback=CallbackSet(PeriodicCallback(new_update, prob.p.hl.update ),
-								 PeriodicCallback(network_dynamics.DailyUpdate_PD, 3600*24)))
+								 PeriodicCallback(network_dynamics.DailyUpdate_X, 3600*24)))
 		#saved_values = SavedValues(Float64, Vector{Float64})
 		#cb = SavingCallback((u,t,integrator)->(tr(u),norm(u)), saved_values)
 
@@ -243,7 +243,7 @@ module system_structs
 		update_energy_pd = zeros(n_updates_per_day*num_days,N)
 		for i=2:n_updates_per_day*num_days
 			for j = 1:N
-				update_energy_pd[i,j] = update_energy[i,j]+(1/1)*(update_energy[i,j]-update_energy_pd_mismatch_d_control[i,j])
+				update_energy_pd[i,j] =0.8*update_energy[i,j]+((6/5)*0.1 )*(update_energy[i,j]-update_energy_pd_mismatch_d_control[i,j])
 			end
 		end
 
@@ -265,9 +265,11 @@ module system_structs
 
 		for i=2:num_days
 			for j = 1:N
-				ILC_power[i,:,j] =sol.prob.p.hl.Q* (ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]))
-				ILC_power_pd[i,:,j] =sol.prob.p.hl.Q* (ILC_power_pd[i-1,:,j] +  sol.prob.p.hl.kappa*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j])
-				+  sol.prob.p.hl.kappa*(1/1)*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]-update_energy_pd_mismatch_d_control[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]))
+				ILC_power[i,:,j] =sol.prob.p.hl.Q* (ILC_power[i-1,:,j] +   0.8*sol.prob.p.hl.kappa*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]))
+
+				ILC_power_pd[i,:,j] =sol.prob.p.hl.Q* (ILC_power_pd[i-1,:,j] +  0.8*sol.prob.p.hl.kappa*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j])
+				+  sol.prob.p.hl.kappa*(6/5)*0.1*(update_energy[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]-update_energy_pd_mismatch_d_control[((i-1)*n_updates_per_day+1):(i*n_updates_per_day),j]))
+
 			end
 			for j = 1:N
 				norm_energy_d[i,j] = norm(update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/sol.prob.p.hl.update
