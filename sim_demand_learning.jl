@@ -38,8 +38,8 @@ end
 begin
 	l_day = 3600*24 # DemCurve.l_day
 	l_hour = 3600 # DemCurve.update
-	update = (l_hour*1)/5 #/2 for half # DemCurve.update
-	n_updates_per_day=120 # 24 l_day / update
+	update = (l_hour*2)/5 #/2 for half # DemCurve.update
+	n_updates_per_day=Int(floor(l_day/update)) # 24 l_day / update
 	l_minute = 60 # DemCurve.l_minute
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=52,T_inv=1/0.05,kI=10)
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=525,T_inv=1/0.05,kI=0.005)
@@ -49,7 +49,7 @@ begin
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=[1/0.05; 1/0.5; 1/5; 1/50],kI=repeat([0.005], inner=N)) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=[0.005; 0.5; 5; 500]) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=[0.002; 0.2; 2; 20],kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=repeat([0.005], inner=N)) # different for each node, change array
-	kappa =0.25*(0.75 / (update)) #*2 for update half
+	kappa =(0.25/update) #*2 for update half
 end
 
 ############################################
@@ -139,18 +139,20 @@ if isdir("$dir/solutions/$(date)") == false
 	mkdir("$dir/solutions/$(date)")
 end
 
-jldopen("$dir/solutions/2020-10-06/sim_demand_learning_pd_with_Tunning_0.25,.jld2", true, true, true, IOStream) do file
-	file["t"] = sol1.t
-    file["u"] = sol1.u
-end
+#jldopen("$dir/solutions/2020-10-09/sim_demand_learning_pd_without_Tunning_0.25.jld2", true, true, true, IOStream) do file
+#	file["t"] = sol1.t
+#    file["u"] = sol1.u
+#end
 
 
 #f = jldopen("$dir/solutions/2020-10-04/sim_demand_learning_p.jld2", "r")
-f = jldopen("$dir/solutions/2020-10-09/sim_demand_learning_p_with_Tunning_0.25,.jld2", "r")
+f = jldopen("$dir/solutions/2020-10-09/sim_demand_learning_p_without_Tunning_0.25.jld2", "r")
 
 
 using CSV
 using JLD2 , Pandas
+
+
 
 ##################### [3.5841198212278796e-10, 3.078381669806953e-10, -7.730920518542944e-12, 3.5113574636468243e-10, 4.18391402683452e-6, 3.5993826772601687e-6, -9.03894389117365e-8, 4.10344664907011e-6, -8.959660667241752e-9, -6.840813496031148e-9, 1.6447769689790595e-10, -8.16593676270488e-9, -1.4336530395777753e-7, -3.3862588282699924e-8, 7.731014271411215e-10, -7.022761484130914e-8, 1.3708213968165875e-7, 3.2382926029415346e-8, 7.731014271411215e-10, 6.715593233297654e-8]##################################################
 #                               PLOTTING                             #
@@ -162,6 +164,9 @@ using Plots
 #		update_energy[i,j] = sol1((i-1)*update)[energy_filter[j]]
 #	end
 #end
+Tuning_P = 1#0.8
+Tuning_D =1 # (update/3600)*0.1
+
 KP = [400, 110, 100, 200]
 LI_exact_pd = zeros(n_updates_per_day * num_days + 1, N)
 for i in 1:n_updates_per_day*num_days+1
@@ -182,7 +187,7 @@ for i=1:n_updates_per_day*num_days+1
 		  	end
 		end
 	end
- end
+end
 
 update_energy_pd_mismatch_yesterday = zeros(n_updates_per_day*num_days+1,N)
 update_energy_pd_mismatch_d_control = zeros(n_updates_per_day*num_days+2,N)
@@ -212,13 +217,13 @@ for i=1:n_updates_per_day*num_days+1
  end
 
 
- update_energy_pd =zeros(n_updates_per_day*num_days+1,N)
- for i=1:n_updates_per_day*num_days+1
- 	for j = 1:N
- 		update_energy_pd[i,j] =0.8*update_energy_pd_mismatch_yesterday[i,j]+ ((1/5)*0.1 )*(update_energy_pd_mismatch_yesterday[i,j]-update_energy_pd_mismatch_d_control[i,j])
+update_energy_pd =zeros(n_updates_per_day*num_days+1,N)
+for i=1:n_updates_per_day*num_days+1
+	for j = 1:N
+ 		update_energy_pd[i,j] =Tuning_P*update_energy_pd_mismatch_yesterday[i,j]+ (Tuning_D*0.1 )*(update_energy_pd_mismatch_yesterday[i,j]-update_energy_pd_mismatch_d_control[i,j])
  	end
- end
-Plots.plots
+end
+
 Plots.plot!(update_energy[:,1][1:20])
 
 #Plots.plot()
@@ -236,7 +241,7 @@ Plots.plot(update_energy)
 
 ILC_power = zeros(num_days+2,n_updates_per_day,N)
 for j = 1:N
-	ILC_power[2,:,j] = Q*(zeros(n_updates_per_day,1) +  0.8*kappa*update_energy[1:n_updates_per_day,j])
+	ILC_power[2,:,j] = Q*(zeros(n_updates_per_day,1) +  Tuning_P*kappa*update_energy[1:n_updates_per_day,j])
 end
 
 norm_energy_d = zeros(num_days,N)
@@ -245,7 +250,7 @@ for j = 1:N
 end
 for i=2:num_days
 	for j = 1:N
-		ILC_power[i+1,:,j] = Q*(ILC_power[i,:,j] +  0.8*kappa*update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+		ILC_power[i+1,:,j] = Q*(ILC_power[i,:,j] +  Tuning_P*kappa*update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
 		norm_energy_d[i,j] = norm(update_energy[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/update
 	end
 end
@@ -256,10 +261,10 @@ error_pd = zeros(num_days+2,n_updates_per_day,N)
 error_pd_kappa = zeros(num_days+2,n_updates_per_day,N)
 
 for j = 1:N
-	ILC_power_pd[2,:,j] = Q*(zeros(n_updates_per_day,1) + 0.8*kappa*update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]
-	+kappa*(1/5)*0.1*(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j]))
+	ILC_power_pd[2,:,j] = Q*(zeros(n_updates_per_day,1) + Tuning_P*kappa*update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]
+	+kappa*(Tuning_D)*0.1*(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j]))
 	error_pd[2,:,j] =(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j])
-	error_pd_kappa[2,:,j] =kappa*(1/5)*0.1(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j])
+	error_pd_kappa[2,:,j] =kappa*(Tuning_D)*0.1(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j])
 
 end
 
@@ -272,10 +277,10 @@ end
 for i=2:num_days
 	for j = 1:N
 
-		ILC_power_pd[i+1,:,j] = Q*(ILC_power_pd[i,:,j] +  0.8*kappa*update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]
-		+kappa*(1/5)*0.1*(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]))
+		ILC_power_pd[i+1,:,j] = Q*(ILC_power_pd[i,:,j] +  Tuning_P*kappa*update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]
+		+kappa*(Tuning_D)*0.1*(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]))
 		error_pd =(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
-		error_pd_kappa=kappa*(1/5)*0.1(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+		error_pd_kappa=kappa*(Tuning_D)*0.1(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
 
 		norm_energy_d_pd[i,j] = norm(update_energy_pd[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/update
 	end
@@ -324,14 +329,18 @@ using LaTeXStrings
 #			   update_pd = [p[12] for p in sol1.u])
 
 # NODE WISE second-wisenode = 1
+
+
+
+savefig("$dir/plots/demand_seconds_Y$(coupfact)_node_$(node)_hetero.png")
+
+
 node = 1
 p1 = Plots.plot()
 ILC_power_update_mean_node = vcat(ILC_power[:,:,node]'...)
 ILC_power_update_mean_node_pd = vcat(ILC_power_pd[:,:,node]'...)
 dd = t->((periodic_demand(t) .+ residual_demand(t)))
 plot!(0:num_days*l_day, t -> dd(t)[node], alpha=0.2,legend=false, label = latexstring("P^d"),linewidth=3,legendfontsize=10, linestyle=:dot)
-
-
 plot!(1:update:24*num_days*3600,LI_exact_pd[1:num_days*n_updates_per_day,node], label=latexstring("y_{pd}"),linewidth=0.3, color ="yellow" ,  w = 2,legend=false,legendfontsize=10,legendfontrotation=10) #, linestyle=:dash)
 plot!(1:update:24*num_days*3600,LI_exact[1:num_days*n_updates_per_day,node], label=latexstring("y_{p}"),linewidth=0.3,color="red",linestyle=:solid, w = 2)
 
@@ -342,6 +351,7 @@ plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node_pd[1:num_days*n_upd
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_updates_per_day], label=latexstring("\$u_{p}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
 			   xtickfontsize=18,w=2,
 			   legendfontsize=10,linewidth=3,legend=false, yaxis=("normed power",font(14)), seriescolor =:black, margin=5Plots.mm)
+
 
 
 ylims!(-0.7,1.5)
@@ -355,18 +365,16 @@ ILC_power_update_mean_node = vcat(ILC_power[:,:,node]'...)
 ILC_power_update_mean_node_pd = vcat(ILC_power_pd[:,:,node]'...)
 dd = t->((periodic_demand(t) .+ residual_demand(t)))
 plot!(0:num_days*l_day, t -> dd(t)[node], alpha=0.2,legend=false, label = latexstring("P^d"),linewidth=3,legendfontsize=10, linestyle=:dot)
-
-
 plot!(1:update:24*num_days*3600,LI_exact_pd[1:num_days*n_updates_per_day,node], label=latexstring("y_{pd}"),linewidth=0.3, color ="yellow" ,  w = 2,legend=false,legendfontsize=10,legendfontrotation=10) #, linestyle=:dash)
 plot!(1:update:24*num_days*3600,LI_exact[1:num_days*n_updates_per_day,node], label=latexstring("y_{p}"),linewidth=0.3,color="red",linestyle=:solid, w = 2)
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node_pd[1:num_days*n_updates_per_day], label=latexstring("\$u_{pd}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),w=2, ytickfontsize=14,
-			   	xtickfontsize=18,
-			   	legendfontsize=10, linewidth=3, yaxis=("normed power",font(14)),  seriescolor = :orchid,  margin=5Plots.mm)
+				xtickfontsize=18,
+			   	legendfontsize=10, linewidth=3,  seriescolor = :orchid,  margin=5Plots.mm)
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_updates_per_day], label=latexstring("\$u_{p}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
-			   xtickfontsize=18,w=2,
-			   legendfontsize=10,linewidth=3,legend=false, yaxis=("normed power",font(14)), seriescolor =:black, margin=5Plots.mm)
+			   	xtickfontsize=18,w=2,
+			   	legendfontsize=10,linewidth=3,legend=false, seriescolor =:black, margin=5Plots.mm)
 
 ylims!(-0.7,1.5)
 title!(L"j = 2")
@@ -381,9 +389,6 @@ ILC_power_update_mean_node = vcat(ILC_power[:,:,node]'...)
 ILC_power_update_mean_node_pd = vcat(ILC_power_pd[:,:,node]'...)
 dd = t->((periodic_demand(t) .+ residual_demand(t)))
 plot!(0:num_days*l_day, t -> dd(t)[node], alpha=0.2,legend=false, label = latexstring("P^d"),linewidth=3,legendfontsize=10, linestyle=:dot)
-
-
-
 plot!(1:update:24*num_days*3600,LI_exact_pd[1:num_days*n_updates_per_day,node], label=latexstring("y_{pd}"),linewidth=0.3, color ="yellow" ,  w = 2,legend=false,legendfontsize=10,legendfontrotation=10) #, linestyle=:dash)
 plot!(1:update:24*num_days*3600,LI_exact[1:num_days*n_updates_per_day,node], label=latexstring("y_{p}"),linewidth=0.3,color="red",linestyle=:solid, w = 2)
 
@@ -392,7 +397,7 @@ plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node_pd[1:num_days*n_upd
 			   	legendfontsize=10, linewidth=3, yaxis=("normed power",font(14)),  seriescolor = :orchid,  margin=5Plots.mm)
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_updates_per_day], label=latexstring("\$u_{p}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
-			   xtickfontsize=18,w=2,
+			   xtickfontsize=18,w=2,xaxis=("days [c]",font(14)),
 			   legendfontsize=10,linewidth=3,legend=false, yaxis=("normed power",font(14)), seriescolor =:black, margin=5Plots.mm)
 
 
@@ -407,18 +412,16 @@ ILC_power_update_mean_node = vcat(ILC_power[:,:,node]'...)
 ILC_power_update_mean_node_pd = vcat(ILC_power_pd[:,:,node]'...)
 dd = t->((periodic_demand(t) .+ residual_demand(t)))
 plot!(0:num_days*l_day, t -> dd(t)[node], alpha=0.2,legend=false, label = latexstring("P^d"),linewidth=3,legendfontsize=10, linestyle=:dot)
-
-
 plot!(1:update:24*num_days*3600,LI_exact_pd[1:num_days*n_updates_per_day,node], label=latexstring("y_{pd}"),linewidth=0.3, color ="yellow" ,  w = 2,legend=false,legendfontsize=10,legendfontrotation=10) #, linestyle=:dash)
 plot!(1:update:24*num_days*3600,LI_exact[1:num_days*n_updates_per_day,node], label=latexstring("y_{p}"),linewidth=0.3,color="red",linestyle=:solid, w = 2)
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node_pd[1:num_days*n_updates_per_day], label=latexstring("\$u_{pd}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),w=2, ytickfontsize=14,
 			   	xtickfontsize=18,
-			   	legendfontsize=10, linewidth=3,legend=false, yaxis=("normed power",font(14)),  seriescolor = :orchid,  margin=5Plots.mm)
+			   	legendfontsize=10, linewidth=3,  seriescolor = :orchid,  margin=5Plots.mm)
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_node[1:num_days*n_updates_per_day], label=latexstring("\$u_{p}^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
-			   xtickfontsize=18,w=2,
-			   legendfontsize=10,linewidth=3, legend=false,yaxis=("normed power",font(14)), seriescolor =:black, margin=5Plots.mm)
+			   xtickfontsize=18,w=2,xaxis=("days [c]",font(14)),
+			   legendfontsize=10,linewidth=3,legend=false,  seriescolor =:black, margin=5Plots.mm)
 
 
 
@@ -449,7 +452,7 @@ plot!(1:update:24*num_days*3600,LI_exact[1:num_days*n_updates_per_day,1] + LI_ex
 
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_sum_pd[1:num_days*n_updates_per_day], label=latexstring("\$u_j^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
-				xtickfontsize=14,
+				xtickfontsize=14,xaxis=("days [c]",font(14)),
 				legendfontsize=10, linewidth=3, yaxis=("normed power",font(14)),  seriescolor = :orchid,  margin=5Plots.mm)
 
 plot!(1:update:num_days*24*3600,  ILC_power_update_mean_sum[1:num_days*n_updates_per_day], label=latexstring("\$u_j^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
@@ -458,7 +461,7 @@ plot!(1:update:num_days*24*3600,  ILC_power_update_mean_sum[1:num_days*n_updates
 
 
 #ylims!(-2,3)
-title!("ILC power update mean sum")
+title!("ILC Power Update Mean Sum")
 savefig(psum,"$dir/plots/demand_seconds_Y$(coupfact)_sum_hetero_update_half_hour.png")
 
 
