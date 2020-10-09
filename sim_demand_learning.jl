@@ -38,8 +38,8 @@ end
 begin
 	l_day = 3600*24 # DemCurve.l_day
 	l_hour = 3600 # DemCurve.update
-	update = (l_hour*6)/5 #/2 for half # DemCurve.update
-	n_updates_per_day=20 # 24 l_day / update
+	update = (l_hour*1)/5 #/2 for half # DemCurve.update
+	n_updates_per_day=120 # 24 l_day / update
 	l_minute = 60 # DemCurve.l_minute
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=52,T_inv=1/0.05,kI=10)
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=525,T_inv=1/0.05,kI=0.005)
@@ -49,7 +49,7 @@ begin
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=[1/0.05; 1/0.5; 1/5; 1/50],kI=repeat([0.005], inner=N)) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=[0.005; 0.5; 5; 500]) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=[0.002; 0.2; 2; 20],kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=repeat([0.005], inner=N)) # different for each node, change array
-	kappa =1.25*(0.75 / (update)) #*2 for update half
+	kappa =0.25*(0.75 / (update)) #*2 for update half
 end
 
 ############################################
@@ -139,14 +139,14 @@ if isdir("$dir/solutions/$(date)") == false
 	mkdir("$dir/solutions/$(date)")
 end
 
-jldopen("$dir/solutions/2020-10-06/sim_demand_learning_pd_1.25K_regel.jld2", true, true, true, IOStream) do file
+jldopen("$dir/solutions/2020-10-06/sim_demand_learning_pd_with_Tunning_0.25,.jld2", true, true, true, IOStream) do file
 	file["t"] = sol1.t
     file["u"] = sol1.u
 end
 
 
 #f = jldopen("$dir/solutions/2020-10-04/sim_demand_learning_p.jld2", "r")
-f = jldopen("$dir/solutions/2020-10-06/sim_demand_learning_p_1.25K_regel.jld2", "r")
+f = jldopen("$dir/solutions/2020-10-09/sim_demand_learning_p_with_Tunning_0.25,.jld2", "r")
 
 
 using CSV
@@ -215,7 +215,7 @@ for i=1:n_updates_per_day*num_days+1
  update_energy_pd =zeros(n_updates_per_day*num_days+1,N)
  for i=1:n_updates_per_day*num_days+1
  	for j = 1:N
- 		update_energy_pd[i,j] =0.8*update_energy_pd_mismatch_yesterday[i,j]+ ((6/5)*0.1 )*(update_energy_pd_mismatch_yesterday[i,j]-update_energy_pd_mismatch_d_control[i,j])
+ 		update_energy_pd[i,j] =0.8*update_energy_pd_mismatch_yesterday[i,j]+ ((1/5)*0.1 )*(update_energy_pd_mismatch_yesterday[i,j]-update_energy_pd_mismatch_d_control[i,j])
  	end
  end
 Plots.plots
@@ -257,9 +257,9 @@ error_pd_kappa = zeros(num_days+2,n_updates_per_day,N)
 
 for j = 1:N
 	ILC_power_pd[2,:,j] = Q*(zeros(n_updates_per_day,1) + 0.8*kappa*update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]
-	+kappa*(6/5)*0.1*(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j]))
+	+kappa*(1/5)*0.1*(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j]))
 	error_pd[2,:,j] =(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j])
-	error_pd_kappa[2,:,j] =kappa*(6/5)*0.1(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j])
+	error_pd_kappa[2,:,j] =kappa*(1/5)*0.1(update_energy_pd_mismatch_yesterday[1:n_updates_per_day,j]-update_energy_pd_mismatch_d_control[1:n_updates_per_day,j])
 
 end
 
@@ -273,9 +273,9 @@ for i=2:num_days
 	for j = 1:N
 
 		ILC_power_pd[i+1,:,j] = Q*(ILC_power_pd[i,:,j] +  0.8*kappa*update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]
-		+kappa*(6/5)*0.1*(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]))
+		+kappa*(1/5)*0.1*(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]))
 		error_pd =(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
-		error_pd_kappa=kappa*(6/5)*0.1(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
+		error_pd_kappa=kappa*(1/5)*0.1(update_energy_pd_mismatch_yesterday[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j]-update_energy_pd_mismatch_d_control[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])
 
 		norm_energy_d_pd[i,j] = norm(update_energy_pd[(i-1)*n_updates_per_day+1:i*n_updates_per_day,j])/update
 	end

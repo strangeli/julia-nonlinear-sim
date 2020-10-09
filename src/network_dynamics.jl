@@ -157,7 +157,7 @@ function (hu::Updating)(integrator)
 end
 function DailyUpdate_PD(integrator)
 	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa *0.8* integrator.p.hl.mismatch_yesterday
-	+integrator.p.hl.kappa*(6/5)*0.1 *(integrator.p.hl.mismatch_yesterday -integrator.p.hl.mismatch_d_control ) )
+	+integrator.p.hl.kappa*(integrator.p.hl.update/3600)*0.1 *(integrator.p.hl.mismatch_yesterday -integrator.p.hl.mismatch_d_control ) )
 end
 function DailyUpdate_X(integrator)
 	integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa *0.8* integrator.p.hl.mismatch_yesterday)

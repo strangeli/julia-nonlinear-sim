@@ -249,7 +249,7 @@ end
 jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_p_with_tunning.jld2", true, true, true, IOStream) do file
 		file["u"] = res.u
 end
-f = jldopen("$dir/solutions/2020-10-08/sim_non_linear_kappa_pd_with_tunning.jld2", "r")
+f = jldopen("$dir/solutions/$(date)/sim_non_linear_kappa_pd_with_tunning.jld2", "r")
 
 
 kappa = [p[6] for p in res.u]
@@ -305,38 +305,49 @@ for row in 1:length(norm_energy_d)
 end
 
 z=reshape(mean_norm_energy_d,length(update_lst_s), length(kappa_lst_s))
-Plots.heatmap(update_lst_s, kappa_lst_s , z , ztickfontsize=14, colorbar=true, #xformatter = :scientific,
-               xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm, zlabel="Legend Title",colorbar_title_location=:left,
-    		   legendfontsize=8, linewidth=3, name = "ht1",legend=:outerright,colorbar_title="norm error",
-			   xaxis=(L"Update [h]",font(14)), yaxis=(L"Kappa  [h^{-1}]",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
-
+Plots.heatmap(update_lst_s, kappa_lst_s , z , ztickfontsize=14, colorbar=true,
+		      xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm, zlabel="Legend Title",
+		      legendfontsize=8, linewidth=3, name = "ht1",legend=:topright,#colorbar_title="norm error",
+			  xaxis=(L"Update [h]",font(14)), yaxis=(L"Kappa  [h^{-1}]",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
+title!("Normed Energy Over The Days With P-Type ILC")
 Plots.savefig("heatmap.png")
 Plots.plot()
 p1 = Plots.contour(update_lst_s,kappa_lst_s,z, fill = true,title_location=:right, thickness_scaling=1.1, dpi=150,#colorbar_title=L"\omega_{max}",#,ylims=(-100,2100),
 			   		   ytickfontsize=12,
 			   		   xtickfontsize=12, xaxis=(L"Update [h]",font(14)), yaxis=(L"Kappa  [h^{-1}]",font(14)),
-			   		   guidefontsize=12, top_margin=5Plots.mm, left_margin=5Plots.mm, bottom_margin=5Plots.mm, right_margin=8Plots.mm) # ,clims=(0,0.5)xlabel!("k_P")
+			   		   guidefontsize=12, top_margin=5Plots.mm, left_margin=5Plots.mm, bottom_margin=5Plots.mm, right_margin=Plots.mm) # ,clims=(0,0.5)xlabel!("k_P")
 
-#title!("Normed power")
+title!("Normed Energy Over The Days With P-Type ILC")
 Plots.savefig("contour.png")
 
 
 Plots.plot()
+
+
+
 z=reshape(mean_norm_energy_d_pd,length(update_lst_s), length(kappa_lst_s))
 Plots.heatmap(update_lst_s, kappa_lst_s , z , ztickfontsize=14, colorbar=true,
 		      xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm, zlabel="Legend Title",
-		      legendfontsize=8, linewidth=3, name = "ht1",legend=:topright,
+		      legendfontsize=8, linewidth=3, name = "ht1",legend=:topright,#colorbar_title="norm error",
 			  xaxis=(L"Update [h]",font(14)), yaxis=(L"Kappa  [h^{-1}]",font(14)),zaxis=("mean(norm_energy_d)",font(14)),c=:reds )
-
+title!("Normed Energy Over The Days With PD-Type ILC")
 Plots.savefig("heatmap_pd.png")
 Plots.plot()
-p2 = Plots.contour(update_lst_s,kappa_lst_s,z, fill = true,title_location=:right, thickness_scaling=1.1, dpi=150,#colorbar_title=L"\omega_{max}",#,ylims=(-100,2100),
-		  			ytickfontsize=12,
-					xtickfontsize=12, xaxis=(L"Update [h]",font(14)), yaxis=(L"Kappa  [h^{-1}]",font(14)),
-		  			guidefontsize=12, top_margin=5Plots.mm, left_margin=5Plots.mm, bottom_margin=5Plots.mm, right_margin=8Plots.mm) # ,clims=(0,0.5)xlabel!("k_P")
+p1 = Plots.contour(update_lst_s,kappa_lst_s,z, fill = true,title_location=:right, thickness_scaling=1.1, dpi=150,#colorbar_title=L"\omega_{max}",#,ylims=(-100,2100),
+			   		   ytickfontsize=12,
+			   		   xtickfontsize=12, xaxis=(L"Update [h]",font(14)), yaxis=(L"Kappa  [h^{-1}]",font(14)),
+			   		   guidefontsize=12, top_margin=5Plots.mm, left_margin=5Plots.mm, bottom_margin=5Plots.mm, right_margin=Plots.mm) # ,clims=(0,0.5)xlabel!("k_P")
 
-#title!("Normed power")
+title!("Normed Energy Over The Days With PD-Type ILC")
 Plots.savefig("contour_pd.png")
+
+
+
+
+
+
+
+
 
 using LaTeXStrings
 Plots.plot()
@@ -426,17 +437,15 @@ plot!(mean(norm_energy_d_pd[3],dims=2), label= L"\kappa_{pd} = 0.5\, h^{-1}", li
 Plots.savefig("$dir/error_comparition_1_part.png")
 
 Plots.plot()
-Plots.plot(mean(norm_energy_d[6],dims=2),legend=:right, label = L"\kappa_{p} = 1.25\, h^{-1}", ytickfontsize=14,
-               xtickfontsize=14, linestyle=:dot, margin=8Plots.mm,
-    		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis = ("2-norm of the error",font(14)), left_margin=12Plots.mm) #  ylims=(0,1e6)
-
-plot!(mean(norm_energy_d_pd[6],dims=2), label= L"\kappa_{pd} = 1.25\, h^{-1}", linewidth = 3, linestyle=:solid)
 
 plot!(mean(norm_energy_d[1],dims=2),label=  L"\kappa_{p} = 0\, h^{-1}", linewidth = 3, linestyle=:dash)
 plot!(mean(norm_energy_d_pd[1],dims=2),label=  L"\kappa_{pd} = 0\, h^{-1}", linewidth = 3, linestyle=:dash)
 
-plot!(mean(norm_energy_d[5],dims=2), label= L"\kappa_{p} = 1\, h^{-1}", linewidth = 3, linestyle=:solid)
-plot!(mean(norm_energy_d_pd[5],dims=2), label= L"\kappa_{pd} = 1\, h^{-1}", linewidth = 3, linestyle=:solid)
+Plots.plot!(mean(norm_energy_d[6],dims=2),legend=:right, label = L"\kappa_{p} = 1.25\, h^{-1}", ytickfontsize=14,
+               xtickfontsize=14, linestyle=:dot, margin=8Plots.mm,
+    		   legendfontsize=8, linewidth=3,xaxis=("days [c]",font(14)), yaxis = ("2-norm of the error",font(14)), left_margin=12Plots.mm) #  ylims=(0,1e6)
+
+plot!(mean(norm_energy_d_pd[6],dims=2), label= L"\kappa_{pd} = 1.25\, h^{-1}", linewidth = 3, linestyle=:solid)
 
 
 Plots.savefig("$dir/error_comparition_6_1.png")
