@@ -15,6 +15,6 @@ echo "SLURM JOB ID: $SLURM_JOBID"
 echo "$SLURM_NTASKS tasks"
 echo "------------------------------------------------------------"
 
-module load julia/1.1.0
+module load julia/1.4.2
 module load hpc/2015
-julia sim_nonlinear_kappa.jl $SLURM_NTASKS
+julia sim_nonlinear_kappa_comm.jl $SLURM_NTASKS

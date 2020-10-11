@@ -190,4 +190,315 @@ function var_last_days(sol, state_filter, n_days)
 end
 
 
+@doc """ energy_cost(sol, energy_filter, energy_abs_filter, num_days)
+calculates the cost of energy reconstructing ILC power from DailyUpdate_<exp>(), HourlyUpdateEcon() or HourlyUpdateEcon(variant_2=true) from the solution
+"""
+
+function energy_cost(sol, energy_filter, energy_abs_filter, num_days, obs_days, lambda)
+    num_days = Int(num_days)
+    obs_days = Int(obs_days)
+    hourly_energy_abs = zeros(24 * num_days, sol.prob.p.N)
+    for i = 1:24*num_days
+        for j = 1:sol.prob.p.N
+            hourly_energy_abs[i, j] = sol(i * 3600.0)[energy_abs_filter[j]]
+        end
+    end
+
+    sum_lambda = 3600.0 * (lambda - 1)
+    sum_sign = zeros(24 * num_days, sol.prob.p.N)
+    for i = 1:24*num_days
+        for t = (i-1)*3600.0+1.0:i*3600.0
+            sum_sign[i, :] .+= sign.(sol(t)[energy_filter])
+        end
+    end
+    sign_term = lambda .* sum_sign .+ sum_lambda
+
+    ILC_power = zeros(num_days + 2, 24, sol.prob.p.N)
+    for j = 1:sol.prob.p.N
+        if sol.prob.kwargs.data.callback.discrete_callbacks[1].affect!.f.variant_2
+            ILC_power[2, :, j] = zeros(24, 1) +
+                                 sol.prob.p.hl.kappa * sign_term[1:24, j] .*
+                                 hourly_energy_abs[1:24, j] ./ 3600.0
+        else
+            ILC_power[2, :, j] = zeros(24, 1) +
+                                 sol.prob.p.hl.kappa * sign_term[1:24, j]
+        end
+    end
+    for i = 2:num_days
+        for j = 1:sol.prob.p.N
+            if sol.prob.kwargs.data.callback.discrete_callbacks[1].affect!.f.variant_2
+                ILC_power[i+1, :, j] = ILC_power[i, :, j] +
+                                       sol.prob.p.hl.kappa *
+                                       sign_term[(i-1)*24+1:i*24, j] .*
+                                       hourly_energy_abs[(i-1)*24+1:i*24, j] ./
+                                       3600.0
+            else
+                ILC_power[i+1, :, j] = ILC_power[i, :, j] +
+                                       sol.prob.p.hl.kappa *
+                                       sign_term[(i-1)*24+1:i*24, j]
+            end # new update law
+        end
+    end
+    ILC_power_hourly = reshape(ILC_power, (num_days + 2) * 24, sol.prob.p.N)
+    cost = (1 - lambda) .* sum(
+        abs.(ILC_power_hourly[24*(num_days-obs_days):24*num_days, :]),
+        dims = 1,
+    ) .+
+           lambda .* sum(
+        abs.(hourly_energy_abs[24*(num_days-obs_days):24*num_days, :]),
+        dims = 1,
+    ) ./ 3600.0
+end
+
+
+function energy_cost_II(
+    sol,
+    energy_filter,
+    energy_abs_filter,
+    num_days,
+    obs_days,
+	lambda,
+)
+    num_days = Int(num_days)
+    obs_days = Int(obs_days)
+    hourly_energy_abs = zeros(24 * num_days, sol.prob.p.N)
+    for i = 1:24*num_days
+        for j = 1:sol.prob.p.N
+            hourly_energy_abs[i, j] = sol(i * 3600.0)[energy_abs_filter[j]]
+        end
+    end
+
+    sum_lambda = 3600.0 * (lambda - 1)
+    sum_sign = zeros(24 * num_days, sol.prob.p.N)
+    for i = 1:24*num_days
+        for t = (i-1)*3600.0+1.0:i*3600.0
+            sum_sign[i, :] .+= sign.(sol(t)[energy_filter])
+        end
+    end
+    sign_term = lambda .* sum_sign .+ sum_lambda
+
+    ILC_power = zeros(num_days + 2, 24, sol.prob.p.N)
+
+    if sol.prob.kwargs.data.callback.discrete_callbacks[1].affect!.f.variant_2
+        cover_values = [(sign_term[1:24, x] .* hourly_energy_abs[1:24, x] ./
+                         3600.0 + sum(
+            sign_term[:, sol.prob.p.hl.ilc_covers[x]] .*
+            hourly_energy_abs[1:24, sol.prob.p.hl.ilc_covers[x]] ./ 3600.0,
+            dims = 2,
+        )) ./ (1 +
+                         length(collect(values(sol.prob.p.hl.ilc_covers[x])))) for x in sol.prob.p.hl.ilc_nodes]
+        ILC_power[2, :, sol.prob.p.hl.ilc_nodes] = zeros(
+            24,
+            length(sol.prob.p.hl.ilc_nodes),
+        ) + sol.prob.p.hl.kappa .*
+                                                   hcat(Vector(collect(cover_values))...)
+    else
+        cover_values = [(sign_term[1:24, x] + sum(
+            sign_term[1:24, sol.prob.p.hl.ilc_covers[x]],
+            dims = 2,
+        )) ./ (1 +
+                         length(collect(values(sol.prob.p.hl.ilc_covers[x])))) for x in sol.prob.p.hl.ilc_nodes]
+        ILC_power[2, :, sol.prob.p.hl.ilc_nodes] = zeros(
+            24,
+            length(sol.prob.p.hl.ilc_nodes),
+        ) + sol.prob.p.hl.kappa .*
+                                                   hcat(Vector(collect(cover_values))...)
+    end
+
+    for i = 2:num_days
+        if sol.prob.kwargs.data.callback.discrete_callbacks[1].affect!.f.variant_2
+            cover_values = [(sign_term[(i-1)*24+1:i*24, x] .*
+                             hourly_energy_abs[(i-1)*24+1:i*24, x] ./ 3600.0 +
+                             sum(
+                sign_term[(i-1)*24+1:i*24, sol.prob.p.hl.ilc_covers[x]] .*
+                hourly_energy_abs[
+                    (i-1)*24+1:i*24,
+                    sol.prob.p.hl.ilc_covers[x],
+                ] ./ 3600.0,
+                dims = 2,
+            )) ./ (1 +
+                             length(collect(values(sol.prob.p.hl.ilc_covers[x])))) for x in sol.prob.p.hl.ilc_nodes]
+            ILC_power[i+1, :, sol.prob.p.hl.ilc_nodes] = ILC_power[
+                i,
+                :,
+                sol.prob.p.hl.ilc_nodes,
+            ] + sol.prob.p.hl.kappa .*
+                                                         hcat(Vector(collect(cover_values))...)
+        else
+            cover_values = [(sign_term[(i-1)*24+1:i*24, x] + sum(
+                sign_term[(i-1)*24+1:i*24, sol.prob.p.hl.ilc_covers[x]],
+                dims = 2,
+            )) ./ (1 +
+                             length(collect(values(sol.prob.p.hl.ilc_covers[x])))) for x in sol.prob.p.hl.ilc_nodes]
+            ILC_power[i+1, :, sol.prob.p.hl.ilc_nodes] = ILC_power[
+                i,
+                :,
+                sol.prob.p.hl.ilc_nodes,
+            ] + sol.prob.p.hl.kappa .*
+                                                         hcat(Vector(collect(cover_values))...)
+        end
+    end
+    ILC_power_hourly = reshape(ILC_power, (num_days + 2) * 24, sol.prob.p.N)
+    cost = (1 - lambda) .* sum(
+        abs.(ILC_power_hourly[24*(num_days-obs_days):24*num_days, :]),
+        dims = 1,
+    ) .+
+           lambda .* sum(
+        abs.(hourly_energy_abs[24*(num_days-obs_days):24*num_days, :]),
+        dims = 1,
+    ) ./ 3600.0
+end
+
+
+function energy_cost_III(
+    sol,
+    energy_filter,
+    energy_abs_filter,
+    num_days,
+    obs_days,
+	lambda,
+)
+    num_days = Int(num_days)
+    obs_days = Int(obs_days)
+    hourly_energy_abs = zeros(24 * num_days, sol.prob.p.N)
+    for i = 1:24*num_days
+        for j = 1:sol.prob.p.N
+            hourly_energy_abs[i, j] = sol(i * 3600.0)[energy_abs_filter[j]]
+        end
+    end
+
+    sum_lambda = 3600.0 * (lambda - 1)
+    sum_sign = zeros(24 * num_days, sol.prob.p.N)
+    for i = 1:24*num_days
+        for t = (i-1)*3600.0+1.0:i*3600.0
+            sum_sign[i, :] .+= sign.(sol(t)[energy_filter])
+        end
+    end
+    sign_term = lambda .* sum_sign .+ sum_lambda
+
+    ILC_power = zeros(num_days + 2, 24, sol.prob.p.N)
+
+    if sol.prob.kwargs.data.callback.discrete_callbacks[1].affect!.f.variant_2
+        ILC_power[2, :, sol.prob.p.hl.ilc_nodes] = zeros(
+            24,
+            length(sol.prob.p.hl.ilc_nodes),
+        ) +
+                                                   sol.prob.p.hl.kappa *
+                                                   sign_term[
+            1:24,
+            sol.prob.p.hl.ilc_nodes,
+        ] .* hourly_energy_abs[
+            1:24,
+            sol.prob.p.hl.ilc_nodes,
+        ] ./ 3600.0
+    else
+        ILC_power[2, :, sol.prob.p.hl.ilc_nodes] = zeros(
+            24,
+            length(sol.prob.p.hl.ilc_nodes),
+        ) + sol.prob.p.hl.kappa *
+                                                   sign_term[
+            1:24,
+            sol.prob.p.hl.ilc_nodes,
+        ]
+    end
+
+    for i = 2:num_days
+        if sol.prob.kwargs.data.callback.discrete_callbacks[1].affect!.f.variant_2
+            ILC_power[i+1, :, sol.prob.p.hl.ilc_nodes] = ILC_power[
+                i,
+                :,
+                sol.prob.p.hl.ilc_nodes,
+            ] +
+                                                         sol.prob.p.hl.kappa *
+                                                         sign_term[
+                (i-1)*24+1:i*24,
+                sol.prob.p.hl.ilc_nodes,
+            ] .* hourly_energy_abs[
+                (i-1)*24+1:i*24,
+                sol.prob.p.hl.ilc_nodes,
+            ] ./ 3600.0
+        else
+            ILC_power[i+1, :, sol.prob.p.hl.ilc_nodes] = ILC_power[
+                i,
+                :,
+                sol.prob.p.hl.ilc_nodes,
+            ] +
+                                                         sol.prob.p.hl.kappa *
+                                                         sign_term[
+                (i-1)*24+1:i*24,
+                sol.prob.p.hl.ilc_nodes,
+            ]
+        end # new update law
+    end
+    ILC_power_hourly = reshape(ILC_power, (num_days + 2) * 24, sol.prob.p.N)
+    cost = (1 - lambda) .* sum(
+        abs.(ILC_power_hourly[24*(num_days-obs_days):24*num_days, :]),
+        dims = 1,
+    ) .+
+           lambda .* sum(
+        abs.(hourly_energy_abs[24*(num_days-obs_days):24*num_days, :]),
+        dims = 1,
+    ) ./ 3600.0
+end
+
+
+function energy_cost_IV(
+    sol,
+    energy_filter,
+    energy_abs_filter,
+    num_days,
+    obs_days,
+	lambda,
+)
+    num_days = Int(num_days)
+    obs_days = Int(obs_days)
+    hourly_energy_abs = zeros(24 * num_days, sol.prob.p.N)
+    for i = 1:24*num_days
+        for j = 1:sol.prob.p.N
+            hourly_energy_abs[i, j] = sol(i * 3600.0)[energy_abs_filter[j]]
+        end
+    end
+
+    sum_lambda = 3600.0 * (lambda - 1)
+    sum_sign = zeros(24 * num_days, sol.prob.p.N)
+    for i = 1:24*num_days
+        for t = (i-1)*3600.0+1.0:i*3600.0
+            sum_sign[i, :] .+= sign.(sol(t)[energy_filter])
+        end
+    end
+    sign_term = lambda .* sum_sign .+ sum_lambda
+
+    ILC_power = zeros(num_days + 2, 24, sol.prob.p.N)
+    if sol.prob.kwargs.data.callback.discrete_callbacks[1].affect!.f.variant_2
+        ILC_power[2, :, :] = zeros(24, sol.prob.p.N) +
+                             sign_term[1:24, :] .* hourly_energy_abs[1:24, :] ./
+                             3600.0 * sol.prob.p.hl.kappa'
+    else
+        ILC_power[2, :, :] = zeros(24, sol.prob.p.N) +
+                             sign_term[1:24, :] * sol.prob.p.hl.kappa'
+    end
+
+    for i = 2:num_days
+        if sol.prob.kwargs.data.callback.discrete_callbacks[1].affect!.f.variant_2
+            ILC_power[i+1, :, :] = ILC_power[i, :, :] +
+                                   sign_term[(i-1)*24+1:i*24, :] .*
+                                   hourly_energy_abs[(i-1)*24+1:i*24, j] ./
+                                   3600.0 * sol.prob.p.hl.kappa'
+        else
+            ILC_power[i+1, :, :] = ILC_power[i, :, :] +
+                                   sign_term[(i-1)*24+1:i*24, :] *
+                                   sol.prob.p.hl.kappa'
+        end # new update law
+    end
+    ILC_power_hourly = reshape(ILC_power, (num_days + 2) * 24, sol.prob.p.N)
+    cost = (1 - lambda) .* sum(
+        abs.(ILC_power_hourly[24*(num_days-obs_days):24*num_days, :]),
+        dims = 1,
+    ) .+
+           lambda .* sum(
+        abs.(hourly_energy_abs[24*(num_days-obs_days):24*num_days, :]),
+        dims = 1,
+    ) ./ 3600.0
+end
+
 end

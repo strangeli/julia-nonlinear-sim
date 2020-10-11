@@ -54,6 +54,8 @@ module system_structs
 		ilc_nodes
 		ilc_covers
 		Q
+		lambda
+		sign_save
 	end
 
 
@@ -121,7 +123,9 @@ module system_structs
 		a = digitalfilter(Lowpass(fc),Butterworth(2));
 		Q1 = filtfilt(a,u);#Markov Parameter
 		Q = Toeplitz(Q1[1001:1001+24-1],Q1[1001:1001+24-1]);
-		higher_layer_control = ILCPars(kappa=0.35, mismatch_yesterday=zeros(24, N), daily_background_power=zeros(24, N), current_background_power=zeros(N), ilc_nodes=vc, ilc_covers=cover, Q=Q)
+		lambda = 1.
+		sign_save = zeros(1,N+1)
+		higher_layer_control = ILCPars(kappa=0.35, mismatch_yesterday=zeros(24, N), daily_background_power=zeros(24, N), current_background_power=zeros(N), ilc_nodes=vc, ilc_covers=cover, Q=Q, lambda = lambda, sign_save = sign_save)
 		periodic_infeed = t -> zeros(N)
 		peak_demand = rand(N)
 		periodic_demand= t -> zeros(N)#peak_demand .* abs(sin(pi * t/24.))
@@ -141,8 +145,10 @@ module system_structs
 								g)
 	end
 
-	function compound_pars(N, low_layer_control, kappa, ilc_nodes, ilc_covers, Q)
-		higher_layer_control = ILCPars(kappa=kappa, mismatch_yesterday=zeros(24, N), daily_background_power=zeros(24, N), current_background_power=zeros(N),ilc_nodes=ilc_nodes, ilc_covers=ilc_covers, Q=Q)
+	function compound_pars(N, low_layer_control, kappa, ilc_nodes, ilc_covers, Q, lambda)
+		sign_save = zeros(1,N+1)
+
+		higher_layer_control = ILCPars(kappa=kappa, mismatch_yesterday=zeros(24, N), daily_background_power=zeros(24, N), current_background_power=zeros(N),ilc_nodes=ilc_nodes, ilc_covers=ilc_covers, Q=Q, lambda = lambda, sign_save = sign_save)
 
 		periodic_infeed = t -> zeros(N)
 		periodic_demand= t -> zeros(N)
@@ -258,7 +264,233 @@ module system_structs
 
 
 	##############################################################################
-	# demand scenarios
+	# communication scenarios
+
+
+
+	function prob_func_I(prob, i, repeat, batch_size, num_days, kappa_lst)
+		println("sim ", i)
+		run = get_run(i, batch_size)
+	    batch = get_batch(i, batch_size)
+
+		prob.p.hl.daily_background_power .= 0.
+		prob.p.hl.current_background_power .= 0.
+		prob.p.hl.mismatch_yesterday .= 0.
+		prob.p.hl.kappa = kappa_lst[batch]
+
+
+		hourly_update = network_dynamics.HourlyUpdateEcon()
+
+		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
+			callback=CallbackSet(PeriodicCallback(hourly_update, 3600, initial_affect= false),
+								 PeriodicCallback(network_dynamics.DailyUpdate, 3600*24, initial_affect= false)))
+	end
+
+	function prob_func_II(prob, i, repeat, batch_size, num_days, kappa_lst)
+		println("sim ", i)
+		run = get_run(i, batch_size)
+	    batch = get_batch(i, batch_size)
+
+		prob.p.hl.daily_background_power .= 0.
+		prob.p.hl.current_background_power .= 0.
+		prob.p.hl.mismatch_yesterday .= 0.
+		prob.p.hl.kappa = kappa_lst[batch]
+
+		hourly_update = network_dynamics.HourlyUpdateEcon()
+
+		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
+			callback=CallbackSet(PeriodicCallback(hourly_update, 3600, initial_affect= false),
+								 PeriodicCallback(network_dynamics.DailyUpdate_II, 3600*24, initial_affect= false)))
+	end
+
+	function prob_func_III(prob, i, repeat, batch_size, num_days, kappa_lst)
+		println("sim ", i)
+		run = get_run(i, batch_size)
+	    batch = get_batch(i, batch_size)
+
+		prob.p.hl.daily_background_power .= 0.
+		prob.p.hl.current_background_power .= 0.
+		prob.p.hl.mismatch_yesterday .= 0.
+		prob.p.hl.kappa = kappa_lst[batch]
+
+		hourly_update = network_dynamics.HourlyUpdateEcon()
+
+		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
+			callback=CallbackSet(PeriodicCallback(hourly_update, 3600, initial_affect= false),
+								 PeriodicCallback(network_dynamics.DailyUpdate_III, 3600*24, initial_affect= false)))
+	end
+
+
+	function prob_func_IV(prob, i, repeat, batch_size, num_days, kappa_lst)
+		println("sim ", i)
+		run = get_run(i, batch_size)
+	    batch = get_batch(i, batch_size)
+
+
+		prob.p.hl.daily_background_power .= 0.
+		prob.p.hl.current_background_power .= 0.
+		prob.p.hl.mismatch_yesterday .= 0.
+		prob.p.hl.kappa = kappa_lst[batch]
+
+
+		hourly_update = network_dynamics.HourlyUpdateEcon()
+
+		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
+			callback=CallbackSet(PeriodicCallback(hourly_update, 3600, initial_affect= false),
+								 PeriodicCallback(network_dynamics.DailyUpdate_IV, 3600*24, initial_affect= false)))
+	end
+
+	function observer_basic_types(sol, i, energy_filter) # what should be extracted from one run
+		N = sol.prob.p.N
+		num_days = Int(sol.prob.tspan[2]/(24*3600))
+
+		hourly_energy = zeros(24*num_days,N)
+
+		for i=1:24*num_days
+			for j = 1:N
+				hourly_energy[i,j] = sol(i*3600)[energy_filter[j]]
+			end
+		end
+
+		norm_energy_d = zeros(num_days,N)
+
+		for i=1:num_days
+			for j = 1:N
+				norm_energy_d[i,j] = norm(hourly_energy[(i-1)*24+1:i*24,j])
+			end
+		end
+
+		((sol.prob.p.hl.kappa, hourly_energy, norm_energy_d), false)
+	end
+
+
+
+
+
+	function observer_basic_types_I(sol, i, freq_filter, energy_filter, energy_abs_filter, freq_threshold, obs_days) # what should be extracted from one run
+		N = sol.prob.p.N
+		num_days = Int(sol.prob.tspan[2]/(24*3600))
+		omega_max = maximum(abs.(sol(sol.prob.tspan[2]-obs_days*3600*24:sol.prob.tspan[2])[freq_filter,:]))
+		ex = observables.frequency_exceedance(sol, freq_filter, freq_threshold)
+		control_energy = observables.sum_abs_energy_last_days(sol, energy_filter, obs_days)
+		var_omega = var(sol,dims=2)[freq_filter]
+		var_ld = observables.var_last_days(sol, freq_filter, obs_days)
+		hourly_energy = zeros(24*num_days,N)
+		for i=1:24*num_days
+			for j = 1:N
+				hourly_energy[i,j] = sol(i*3600)[energy_filter[j]]
+			end
+		end
+
+		ILC_power = zeros(num_days,24,N)
+		norm_energy_d = zeros(num_days,N)
+		for j = 1:N
+			norm_energy_d[1,j] = norm(hourly_energy[1:24,j])
+		end
+
+		for i=2:num_days
+			for j = 1:N
+				ILC_power[i,:,j] = (ILC_power[i-1,:,j] +  sol.prob.p.hl.kappa*hourly_energy[(i-1)*24+1:i*24,j])
+			end
+			for j = 1:N
+				norm_energy_d[i,j] = norm(hourly_energy[(i-1)*24+1:i*24,j])
+			end
+		end
+
+		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, hourly_energy, norm_energy_d), false)
+	end
+
+
+	function observer_basic_types_II(sol, i, freq_filter, energy_filter, energy_abs_filter, freq_threshold, obs_days) # what should be extracted from one run
+		N = sol.prob.p.N
+		num_days = Int(sol.prob.tspan[2]/(24*3600))
+		omega_max = maximum(abs.(sol(sol.prob.tspan[2]-obs_days*3600*24:sol.prob.tspan[2])[freq_filter,:]))
+		ex = observables.frequency_exceedance(sol, freq_filter, freq_threshold)
+		control_energy = observables.sum_abs_energy_last_days(sol, energy_filter, obs_days)
+		var_omega = var(sol,dims=2)[freq_filter]
+		var_ld = observables.var_last_days(sol, freq_filter, obs_days)
+
+				hourly_energy = zeros(24*num_days,N)
+				for i=1:24*num_days
+					for j = 1:N
+						hourly_energy[i,j] = sol(i*3600)[energy_filter[j]]
+					end
+				end
+
+				ILC_power = zeros(num_days,24,N)
+				norm_energy_d = zeros(num_days,N)
+				for j = 1:N
+					norm_energy_d[1,j] = norm(hourly_energy[1:24,j])
+				end
+
+				for i=2:num_days
+					for j = 1:N
+						norm_energy_d[i,j] = norm(hourly_energy[(i-1)*24+1:i*24,j])
+					end
+				end
+
+
+		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld,  hourly_energy, norm_energy_d), false)
+	end
+
+	function observer_basic_types_III(sol, i, freq_filter, energy_filter, energy_abs_filter, freq_threshold, obs_days) # what should be extracted from one run
+		N = sol.prob.p.N
+		num_days = Int(sol.prob.tspan[2]/(24*3600))
+		omega_max = maximum(abs.(sol(sol.prob.tspan[2]-obs_days*3600*24:sol.prob.tspan[2])[freq_filter,:]))
+		ex = observables.frequency_exceedance(sol, freq_filter, freq_threshold)
+		control_energy = observables.sum_abs_energy_last_days(sol, energy_filter, obs_days)
+		var_omega = var(sol,dims=2)[freq_filter]
+		var_ld = observables.var_last_days(sol, freq_filter, obs_days)
+
+				hourly_energy = zeros(24*num_days,N)
+				for i=1:24*num_days
+					for j = 1:N
+						hourly_energy[i,j] = sol(i*3600)[energy_filter[j]]
+					end
+				end
+
+				norm_energy_d = zeros(num_days,N)
+				for j = 1:N
+					norm_energy_d[1,j] = norm(hourly_energy[1:24,j])
+				end
+
+				for i=2:num_days
+					for j = 1:N
+						norm_energy_d[i,j] = norm(hourly_energy[(i-1)*24+1:i*24,j])
+					end
+				end
+
+		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, hourly_energy, norm_energy_d), false)
+	end
+
+	function observer_basic_types_IV(sol, i, freq_filter, energy_filter, energy_abs_filter, freq_threshold, obs_days) # what should be extracted from one run
+		N = sol.prob.p.N
+		num_days = Int(sol.prob.tspan[2]/(24*3600))
+		omega_max = maximum(abs.(sol(sol.prob.tspan[2]-obs_days*3600*24:sol.prob.tspan[2])[freq_filter,:]))
+		ex = observables.frequency_exceedance(sol, freq_filter, freq_threshold)
+		control_energy = observables.sum_abs_energy_last_days(sol, energy_filter, obs_days)
+		var_omega = var(sol,dims=2)[freq_filter]
+		var_ld = observables.var_last_days(sol, freq_filter, obs_days)
+						hourly_energy = zeros(24*num_days,N)
+				for i=1:24*num_days
+					for j = 1:N
+						hourly_energy[i,j] = sol(i*3600)[energy_filter[j]]
+					end
+				end
+
+				norm_energy_d = zeros(num_days,N)
+				for j = 1:N
+					norm_energy_d[1,j] = norm(hourly_energy[1:24,j])
+				end
+
+				for i=2:num_days
+					for j = 1:N
+						norm_energy_d[i,j] = norm(hourly_energy[(i-1)*24+1:i*24,j])
+					end
+				end
+
+		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, hourly_energy, norm_energy_d), false)
+	end
 
 
 

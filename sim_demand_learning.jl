@@ -19,7 +19,7 @@ begin
 end
 
 begin
-	N = 4
+	N = 24
 	num_days =  10
 	freq_threshold = 0.2
 end
@@ -40,14 +40,15 @@ begin
 	l_hour = 3600 # DemCurve.l_hour
 	l_minute = 60 # DemCurve.l_minute
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=52,T_inv=1/0.05,kI=10)
-	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=525,T_inv=1/0.05,kI=0.005)
-	# low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner=N),kI=repeat([0.005], inner=N)) # different for each node, change array
-	low_layer_control = system_structs.LeakyIntegratorPars(M_inv=[1/5.; 1/4.8; 1/4.1; 1/4.8],kP= [400.; 110.; 100.; 200.],T_inv=[1/0.04; 1/0.045; 1/0.047; 1/0.043],kI=[0.05; 0.004; 0.05; 0.001]) # different for each node, change array
+	# low_layer_control = system_structs.LeakyIntegratorPars(M_inv=0.2,kP=525,T_inv=1/0.05,kI=0.005)
+	 low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner=N),kI=repeat([0.005], inner=N)) # different for each node, change array
+	# low_layer_control = system_structs.LeakyIntegratorPars(M_inv=[1/5.; 1/4.8; 1/4.1; 1/4.8],kP= [400.; 110.; 100.; 200.],T_inv=[1/0.04; 1/0.045; 1/0.047; 1/0.043],kI=[0.05; 0.004; 0.05; 0.001]) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=[0.1; 10; 100; 1000],T_inv=repeat([1/0.05], inner=N),kI=repeat([0.005], inner=N)) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=[1/0.05; 1/0.5; 1/5; 1/50],kI=repeat([0.005], inner=N)) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=[0.005; 0.5; 5; 500]) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=[0.002; 0.2; 2; 20],kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=repeat([0.005], inner=N)) # different for each node, change array
 	kappa = 1.0 / l_hour
+	lambda = 1.
 end
 
 ############################################
@@ -115,11 +116,18 @@ end
 # demand_amp = t->vcat(demand_ampp(t), demand_ampn(t))
 
 # slowly increasing and decreasing amplitude - only working for <= 10 days and N = 4 now
-demand_amp1 = demand_amp_var(repeat([80 80 80 10 10 10 40 40 40 40 40], outer=Int(N/4))') # random positive amp over days by 10%
-demand_amp2 = demand_amp_var(repeat([10 10 10 80 80 80 40 40 40 40 40], outer=Int(N/4))') # random positive amp over days by 10%
-demand_amp3 = demand_amp_var(repeat([60 60 60 60 10 10 10 40 40 40 40], outer=Int(N/4))') # random positive amp over days by 10%
-demand_amp4 = demand_amp_var(repeat([30 30 30 30 10 10 10 80 80 80 80], outer=Int(N/4))') # random positive amp over days by 10%
-demand_amp = t->vcat(demand_amp1(t), demand_amp2(t), demand_amp3(t), demand_amp4(t))
+# demand_amp1 = demand_amp_var(repeat([80 80 80 10 10 10 40 40 40 40 40], outer=Int(N/4))') # random positive amp over days by 10%
+# demand_amp2 = demand_amp_var(repeat([10 10 10 80 80 80 40 40 40 40 40], outer=Int(N/4))') # random positive amp over days by 10%
+# demand_amp3 = demand_amp_var(repeat([60 60 60 60 10 10 10 40 40 40 40], outer=Int(N/4))') # random positive amp over days by 10%
+# demand_amp4 = demand_amp_var(repeat([30 30 30 30 10 10 10 80 80 80 80], outer=Int(N/4))') # random positive amp over days by 10%
+# demand_amp = t->vcat(demand_amp1(t), demand_amp2(t), demand_amp3(t), demand_amp4(t))
+
+demand_amp1 = demand_amp_var(60 .+ rand(num_days+1,Int(N/4)).* 40.)
+demand_amp2 = demand_amp_var(70 .+ rand(num_days+1,Int(N/4)).* 30.)
+demand_amp3 = demand_amp_var(80 .+ rand(num_days+1,Int(N/4)).* 20.)
+demand_amp4 = demand_amp_var(90 .+ rand(num_days+1,Int(N/4)).* 10.)
+demand_amp = t->vcat(demand_amp1(t), demand_amp2(t),demand_amp3(t),demand_amp4(t))
+
 
 
 # # random positive amp over days by 30%
@@ -133,6 +141,12 @@ samples = 24*4
 inter = interpolate([.2 * randn(N) for i in 1:(num_days * samples + 1)], BSpline(Linear()))
 residual_demand = t -> inter(1. + t / (24*3600) * samples) # 1. + is needed to avoid trying to access out of range
 
+using Plots
+using LaTeXStrings
+dd = t->((periodic_demand(t) .+ residual_demand(t)))
+plot(0:num_days*l_day, t -> (dd(t)[1] .+ dd(t)[2] .+ dd(t)[3] .+ dd(t)[4]), alpha=0.2, label = latexstring("\$P^d_j\$"),linewidth=3, linestyle=:dot)
+
+
 #########################################
 #            SIM                      #
 #########################################
@@ -141,13 +155,13 @@ residual_demand = t -> inter(1. + t / (24*3600) * samples) # 1. + is needed to a
 vc1 = 1:N # ilc_nodes (here: without communication)
 cover1 = Dict([v => [] for v in vc1])# ilc_cover
 u = [zeros(1000,1);1;zeros(1000,1)];
-fc = 1/6;
+fc = 1/3;
 a = digitalfilter(Lowpass(fc),Butterworth(2));
 Q1 = filtfilt(a,u);# Markov Parameter
 Q = Toeplitz(Q1[1001:1001+24-1],Q1[1001:1001+24-1]);
 
 
-compound_pars = system_structs.compound_pars(N, low_layer_control, kappa, vc1, cover1, Q)
+compound_pars = system_structs.compound_pars(N, low_layer_control, kappa, vc1, cover1, Q, lambda)
 compound_pars.hl.daily_background_power .= 0
 compound_pars.hl.current_background_power .= 0
 compound_pars.hl.mismatch_yesterday .= 0.
@@ -175,6 +189,9 @@ sol1 = solve(ode_tl1, Rodas4())
 ######################################################################
 
 using Plots
+
+
+plot(sol, vars=phase_filter)
 
 hourly_energy = zeros(24*num_days+1,N)
 for i=1:24*num_days+1

@@ -163,6 +163,146 @@ end
 
 
 
+@doc """
+    HourlyUpdateSquare(integrator)
+PeriodicCallback function acting on the `integrator` that is called every simulation hour (t = 3600,2*3600,3*3600...).
+	Should ideally replace HourlyUpdate(integrator).
+"""
+Base.@kwdef struct HourlyUpdateSquare
+	verbose = false
+end
+function (hus::HourlyUpdateSquare)(integrator)
+	hour = mod(round(Int, integrator.t/3600.), 24) + 1
+	last_hour = mod(hour-2, 24) + 1
+
+	power_idx = 3*integrator.p.N+1:4*integrator.p.N
+	power_abs_idx = 4*integrator.p.N+1:5*integrator.p.N
+
+	if hus.verbose
+		println("===========================")
+		println("Starting hour $hour, last hour was $last_hour")
+		println("Integrated power from the last hour:")
+		println(integrator.u[power_idx])
+		println("Yesterdays mismatch for the last hour:")
+		println(integrator.p.hl.mismatch_yesterday[last_hour,:])
+		println("Background power for the next hour:")
+		println(integrator.p.hl.daily_background_power[hour, :])
+	end
+
+	integrator.p.hl.mismatch_yesterday[last_hour,:] .= integrator.u[power_idx]
+
+	integrator.u[power_idx] .= 0.
+	integrator.u[power_abs_idx] .= 0.
+	integrator.p.hl.sign_save = zeros(1,integrator.p.N+1)
+
+	integrator.p.hl.current_background_power .= integrator.p.hl.daily_background_power[hour, :]
+	nothing
+end
+
+
+@doc """
+    HourlyUpdateEcon(integrator)
+PeriodicCallback function acting on the `integrator` that is called every simulation hour (t = 3600,2*3600,3*3600...).
+"""
+Base.@kwdef struct HourlyUpdateEcon
+	verbose = false
+	variant_2 = false
+end
+
+function (hue::HourlyUpdateEcon)(integrator)
+	hour = mod(round(Int, integrator.t/3600.), 24) + 1
+	last_hour = mod(hour-2, 24) + 1
+
+	power_idx = 3*integrator.p.N+1:4*integrator.p.N
+	power_abs_idx = 4*integrator.p.N+1:5*integrator.p.N
+
+	sum_lambda = 3600. * (integrator.p.hl.lambda - 1)
+	sum_sign = zeros(integrator.p.N)
+	for t in integrator.t - 3600. + 1.:integrator.t
+		sum_sign += sign.(integrator.sol(t)[power_idx])
+	end
+	sign_term = integrator.p.hl.lambda .* sum_sign .+ sum_lambda
+	# integrator.u[sign_idx]
+	if hue.variant_2
+		integrator.p.hl.mismatch_yesterday[last_hour,:] .=  integrator.u[power_abs_idx] ./ 3600. .* sign_term # variant 2 multiplies with the mean energy.
+	else
+		integrator.p.hl.mismatch_yesterday[last_hour,:] .=  sign_term
+	end
+
+	if hue.verbose
+		println("===========================")
+		println("Starting hour $hour, last hour was $last_hour")
+		println("Integrated power from the last hour:")
+		println(integrator.u[power_idx])
+		println("Yesterdays mismatch for the last hour:")
+		println(integrator.p.hl.mismatch_yesterday[last_hour,:])
+		println("Background power for the next hour:")
+		println(integrator.p.hl.daily_background_power[hour, :])
+	end
+
+	integrator.u[power_idx] .= 0.
+	integrator.u[power_abs_idx] .= 0.
+	integrator.p.hl.sign_save = zeros(1,integrator.p.N+1)
+
+	integrator.p.hl.current_background_power .= integrator.p.hl.daily_background_power[hour, :]
+	nothing
+end
+
+
+function neighbour_map(g, vc)
+    Dict([v => neighbors(g, v) for v in vc])
+end
+
+function ilc_update(control_energy, g)
+    # set of vertices that are independent
+    # (no two vertices are adjacent to each other)
+    ilc_nodes = independent_set(g, DegreeIndependentSet())
+    nm = neighbour_map(g, ilc_nodes)
+    return Dict([x => (control_energy[x] + sum(control_energy[nm[x]]))/length(collect(values(nm[x]))) for x in ilc_nodes])
+end
+
+
+function DailyUpdate(integrator)
+	@sync integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.kappa * integrator.p.hl.mismatch_yesterday)
+	#println("mismatch ", integrator.p.hl.daily_background_power)
+	nothing
+end
+
+@doc """
+    DailyUpdate_II(integrator) - vertex cover ILC with averaged update from neighbors
+PeriodicCallback function acting on the `integrator` that implements the ILC once a simulation day.
+"""
+function DailyUpdate_II(integrator)
+	#y_h = ilc_update(integrator.p.hl.mismatch_yesterday, integrator.p.graph)
+	#println("y_h ", y_h)
+	cover_values = [(integrator.p.hl.mismatch_yesterday[:,x] + sum(integrator.p.hl.mismatch_yesterday[:,integrator.p.hl.ilc_covers[x]],dims=2))./(1 + length(collect(values(integrator.p.hl.ilc_covers[x])))) for x in integrator.p.hl.ilc_nodes]
+	@sync integrator.p.hl.daily_background_power[:,integrator.p.hl.ilc_nodes] = integrator.p.hl.Q * (integrator.p.hl.daily_background_power[:,integrator.p.hl.ilc_nodes] + integrator.p.hl.kappa .* hcat(Vector(collect(cover_values))...))
+	nothing
+end
+
+
+@doc """
+    DailyUpdate_III(integrator) - ILC at vertex cover with local update
+PeriodicCallback function acting on the `integrator` that implements the ILC once a simulation day.
+"""
+function DailyUpdate_III(integrator)
+	#cover_values = [integrator.p.hl.mismatch_yesterday[:,x] + sum(integrator.p.hl.mismatch_yesterday[:,integrator.p.hl.ilc_covers[x]],dims=2)./length(collect(values(integrator.p.hl.ilc_covers[x]))) for x in integrator.p.hl.ilc_nodes]
+	@sync integrator.p.hl.daily_background_power[:,integrator.p.hl.ilc_nodes] = integrator.p.hl.Q * (integrator.p.hl.daily_background_power[:,integrator.p.hl.ilc_nodes] + integrator.p.hl.kappa .* integrator.p.hl.mismatch_yesterday[:,integrator.p.hl.ilc_nodes])
+	nothing
+end
+
+
+
+@doc """
+    DailyUpdate_IV(integrator) - ILC at 50% of nodes and random averaged update (3 random nodes)
+PeriodicCallback function acting on the `integrator` that implements the ILC once a simulation day.
+"""
+function DailyUpdate_IV(integrator)
+	@sync integrator.p.hl.daily_background_power = integrator.p.hl.Q * (integrator.p.hl.daily_background_power + integrator.p.hl.mismatch_yesterday * integrator.p.hl.kappa')
+	nothing
+end
+
+
 function DailyUpdate_X(integrator)
 	#println("mismatch ", integrator.p.hl.daily_background_power)
 	#println("Q ", integrator.p.hl.Q)

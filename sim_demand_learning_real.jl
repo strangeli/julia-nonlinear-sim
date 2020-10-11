@@ -1,4 +1,3 @@
-
 begin
 	dir = @__DIR__
 	include("$dir/src/system_structs.jl")
@@ -49,6 +48,7 @@ begin
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=repeat([0.2], inner=N),kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=[0.005; 0.5; 5; 500]) # different for each node, change array
 	#low_layer_control = system_structs.LeakyIntegratorPars(M_inv=[0.002; 0.2; 2; 20],kP=repeat([525], inner=N),T_inv=repeat([1/0.05], inner = N),kI=repeat([0.005], inner=N)) # different for each node, change array
 	kappa = 1. / l_hour
+	lambda = 1.
 end
 
 ############################################
@@ -172,7 +172,7 @@ Q1 = filtfilt(a,u);#Markov Parameter
 Q = Toeplitz(Q1[1001:1001+24-1],Q1[1001:1001+24-1]);
 
 
-compound_pars = system_structs.compound_pars(N, low_layer_control, kappa, vc1, cover1, Q)
+compound_pars = system_structs.compound_pars(N, low_layer_control, kappa, vc1, cover1, Q, lambda)
 
 compound_pars.hl.daily_background_power .= 0
 compound_pars.hl.current_background_power .= 0
@@ -186,10 +186,27 @@ using Plots
 dd = t->((periodic_demand(t) .+ residual_demand(t)))
 plot(0:7*l_day, t -> dd(t)[1],ytickfontsize=14,
                xtickfontsize=18, margin=5Plots.mm,
-    		   legendfontsize=12, linewidth=3,xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),xaxis=("days [c]",font(14)), yaxis=("normed demand",font(14)), legend=nothing)
+    		   legendfontsize=12, linewidth=3,xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),xaxis=("days [c]",font(14)), yaxis=("normed demand H0",font(14)), legend=nothing)
 #title!("Demand for one week in winter (household)")
-savefig("$dir/plots/real_demand_winter_week.png")
+savefig("$dir/plots/real_demand_winter_week_1.png")
 
+plot(0:7*l_day, t -> dd(t)[2],ytickfontsize=14,
+               xtickfontsize=18, margin=5Plots.mm,
+    		   legendfontsize=12, linewidth=3,xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),xaxis=("days [c]",font(14)), yaxis=("normed demand G1",font(14)), legend=nothing)
+#title!("Demand for one week in winter (household)")
+savefig("$dir/plots/real_demand_winter_week_2.png")
+
+plot(0:7*l_day, t -> dd(t)[3],ytickfontsize=14,
+               xtickfontsize=18, margin=5Plots.mm,
+    		   legendfontsize=12, linewidth=3,xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),xaxis=("days [c]",font(14)), yaxis=("normed demand G4",font(14)), legend=nothing)
+#title!("Demand for one week in winter (household)")
+savefig("$dir/plots/real_demand_winter_week_3.png")
+
+plot(0:7*l_day, t -> dd(t)[4],ytickfontsize=14,
+               xtickfontsize=18, margin=5Plots.mm,
+    		   legendfontsize=12, linewidth=3,xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),xaxis=("days [c]",font(14)), yaxis=("normed demand mix",font(14)), legend=nothing)
+#title!("Demand for one week in winter (household)")
+savefig("$dir/plots/real_demand_winter_week_4.png")
 
 
 

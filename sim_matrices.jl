@@ -196,10 +196,11 @@
 	Q1 = filtfilt(a,u);#Markov Parameter
 	Qq = Toeplitz(Q1[1001:1001+24-1],Q1[1001:1001+24-1]);
 	Q = kron(Qq,diagm(0=>ones(N)))
+	# Q = diagm(0=>ones(N*24))
 
 	## Plotting max(eig(Q*(I-PL))) with L in different kappa
 	i = 0;
-	nsteps= 800;
+	nsteps= 50;
 	kappa = zeros(nsteps)
 	hour = 24
 	d1_N1 = zeros(nsteps)
@@ -225,7 +226,7 @@
 	y3 = mo;
 	# MATLAB: p=find(y1==min(y1));
 	# MATLAB: q=find(y3==min(y3));
-	plot(x,y2, linewidth=3,linestyle = :dot, label = "Upper bound", legend=:topleft, margin=3Plots.mm, xaxis=(L"\kappa [h^{-1}]", font(14)), xtickfontsize=18,legendfontsize=11, yaxis=("Max. eigenvalue or singular value", font(14)),ytickfontsize = 18) #  xticks = (0:0.25:2, string.(0:0.25:2))
+	plot(x,y2, linewidth=3,linestyle = :dot, label = "Upper bound", legend=:topleft, margin=3Plots.mm, xaxis=("kappa [h^{-1}]", font(14)), xtickfontsize=18,legendfontsize=11, yaxis=("Max. eigenvalue or singular value", font(14)),ytickfontsize = 18) #  xticks = (0:0.25:2, string.(0:0.25:2))
 	plot!(x,y1, linewidth=3, label = "AS") # : max(|eig(Q(I-PL))|)
 	plot!(x,y3,linestyle=:dash, linewidth=3, label = "MC");# max(sv(PQ/P(I-PL))
 	# MATLAB:text(x(p),y1(p),[num2str(x(p))],'color','k');
