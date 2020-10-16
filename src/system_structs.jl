@@ -182,25 +182,18 @@ module system_structs
 
 	function prob_func_ic(prob, i, repeat, batch_size, kappa_lst, update_lst, num_days,kappa_lst_s,update_lst_s)
 		println("sim ", i)
-		@show run = get_run(i, batch_size)
-	    @show batch = get_batch(i, batch_size)
-
-		#update = l_hour/4 #/2 for half # DemCurve.update
-
+		run = get_run(i, batch_size)
+	        batch = get_batch(i, batch_size)
+	
 		prob.p.hl.daily_background_power .= 0.
 		prob.p.hl.current_background_power .= 0.
 		prob.p.hl.mismatch_yesterday .= 0.
-
-		prob.p.hl.mismatch_d_control .= 0.
-
-
-		#prob.p.hl.update = update
+                prob.p.hl.mismatch_d_control .= 0.
+		
 		number= mod(batch,6)==0 ? 6 : mod(batch,6)
 		prob.p.hl.kappa = kappa_lst[batch]
 
 		prob.p.hl.update = update_lst[batch]
-
-		#prob.p.coupling = 800. .* diagm(0=>ones(ne(prob.p.graph)))
 
 		new_update = network_dynamics.Updating()
 
@@ -208,8 +201,6 @@ module system_structs
 		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
 			callback=CallbackSet(PeriodicCallback(new_update, prob.p.hl.update ),
 								 PeriodicCallback(network_dynamics.DailyUpdate_X, 3600*24)))
-		#saved_values = SavedValues(Float64, Vector{Float64})
-		#cb = SavingCallback((u,t,integrator)->(tr(u),norm(u)), saved_values)
 
 	end
 
