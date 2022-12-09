@@ -17,4 +17,5 @@ echo "------------------------------------------------------------"
 
 module load julia/1.4.2
 module load hpc/2015
-julia sim_nonlinear_kappa_comm.jl $SLURM_NTASKS
+#julia sim_nonlinear_kappa_comm.jl $SLURM_NTASKS
+julia sim_nonlinear_kappa_comm2_svg.jl $SLURM_NTASKS

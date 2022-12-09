@@ -23,7 +23,7 @@ if _calc
 	println(length(workers()), " workers")
 else
 	using Plots
-	#plotlyjs()
+	plotlyjs()
 end
 
 # here comes the broadcast
@@ -237,46 +237,46 @@ norm_energy_dn = [p[12] for p in res.u]
 using LaTeXStrings
 plot(mean(norm_energy_d[1],dims=2),legend=:right, label = L"\kappa = 0.00\, h^{-1}", ytickfontsize=14,
                xtickfontsize=14, linestyle=:dot, margin=8Plots.mm,
-    		   legendfontsize=14, linewidth=3,xaxis=("days [c]",font(14)), yaxis = ("2-norm of the error [s]",font(14)), left_margin=12Plots.mm) #  ylims=(0,1e6)
-plot!(mean(norm_energy_d[2],dims=2), label= L"\kappa = 0.25\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
-plot!(mean(norm_energy_d[3],dims=2), label= L"\kappa = 0.50\, h^{-1}", linewidth = 3, linestyle=:dashdot)
-plot!(mean(norm_energy_d[4],dims=2),label=  L"\kappa = 0.75\, h^{-1}", linewidth = 3, linestyle=:dash)
-plot!(mean(norm_energy_d[5],dims=2), label= L"\kappa = 1.00\, h^{-1}", linewidth = 3, linestyle=:solid)
+    		   legendfontsize=14, linewidth=3,xaxis=("days [c]",font(14)), yaxis = ("2-norm of the error [s]",font(14)), left_margin=12Plots.mm, linecolor = :blue, alpha=0.4) #  ylims=(0,1e6)
+plot!(mean(norm_energy_d[2],dims=2), label= L"\kappa = 0.25\, h^{-1}", linewidth = 3, linestyle=:solid, linecolor = :black)
+plot!(mean(norm_energy_d[3],dims=2), label= L"\kappa = 0.50\, h^{-1}", linewidth = 3, linestyle=:dash, linecolor = :blue, alpha=0.4)
+plot!(mean(norm_energy_d[4],dims=2),label=  L"\kappa = 0.75\, h^{-1}", linewidth = 3, linestyle=:solid, linecolor = :blue, alpha=0.4)
+plot!(mean(norm_energy_d[5],dims=2), label= L"\kappa = 1.00\, h^{-1}", linewidth = 3, linestyle=:dash, linecolor = :black)
 #title!("Error norm")
-savefig("$dir/201207_kappa_Y6_hetero.png")
+savefig("$dir/201207_kappa_Y6_hetero.svg")
 
 using LaTeXStrings
 plot(mean(norm_energy_d[5],dims=2),legend=:right, label = L"\kappa = 1.00\, h^{-1}", ytickfontsize=14,
                xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
-    		   legendfontsize=13, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error [s]",font(14)))  # ylims=(0,1e6)
-plot!(mean(norm_energy_d[6],dims=2),label=  L"\kappa = 1.25\, h^{-1}", linewidth = 3, linestyle=:dash)
-plot!(mean(norm_energy_d[7],dims=2),label=  L"\kappa = 1.50\, h^{-1}", linewidth = 3, linestyle=:dashdot)
-plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
-plot!(mean(norm_energy_d[9],dims=2), label= L"\kappa = 2.00\, h^{-1}", linewidth = 3, linestyle=:dot)
+    		   legendfontsize=13, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error [s]",font(14)), linecolor = :black)  # ylims=(0,1e6)
+plot!(mean(norm_energy_d[6],dims=2),label=  L"\kappa = 1.25\, h^{-1}", linewidth = 3, linestyle=:dash, linecolor = :blue, alpha=0.4)
+plot!(mean(norm_energy_d[7],dims=2),label=  L"\kappa = 1.50\, h^{-1}", linewidth = 3, linestyle=:solid, linecolor = :blue, alpha=0.4)
+plot!(mean(norm_energy_d[8],dims=2),label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dash, linecolor = :black)
+plot!(mean(norm_energy_d[9],dims=2), label= L"\kappa = 2.00\, h^{-1}", linewidth = 3, linestyle=:dot, linecolor = :blue, alpha=0.4)
 #title!("Error norm")
-savefig("$dir/201207_kappa2_Y6_hetero.png")
+savefig("$dir/201207_kappa2_Y6_hetero.svg")
 
 # using LaTeXStrings
 # plot(norm_energy_dn[1],legend=:right, label = L"\kappa = 0.00\, h^{-1}", ytickfontsize=14,
 #                xtickfontsize=14, linestyle=:dot, margin=8Plots.mm,
 #     		   legendfontsize=14, linewidth=3,xaxis=("days [c]",font(14)), yaxis = ("2-norm of the error [s]",font(14)),left_margin=12Plots.mm) #  ylims=(0,1e6)
 # plot!(norm_energy_dn[2], label= L"\kappa = 0.25\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
-# plot!(norm_energy_dn[3], label= L"\kappa = 0.50\, h^{-1}", linewidth = 3, linestyle=:dashdot)
+# plot!(norm_energy_dn[3], label= L"\kappa = 0.50\, h^{-1}", linewidth = 3, linestyle=:dashdot, linecolor = :black)
 # plot!(norm_energy_dn[4],label=  L"\kappa = 0.75\, h^{-1}", linewidth = 3, linestyle=:dash)
-# plot!(norm_energy_dn[5], label= L"\kappa = 1.00\, h^{-1}", linewidth = 3, linestyle=:solid)
+# plot!(norm_energy_dn[5], label= L"\kappa = 1.00\, h^{-1}", linewidth = 3, linestyle=:solid, linecolor = :black)
 # #title!("Error norm")
-# savefig("$dir/201207_kappa_Y6_hetero_dn.png")
+# savefig("$dir/201207_kappa_Y6_hetero_dn.svg")
 
 # using LaTeXStrings
 # plot(norm_energy_dn[5],legend=:right, label = L"\kappa = 1.00\, h^{-1}", ytickfontsize=14,
 #                xtickfontsize=14, linestyle =:solid, margin=8Plots.mm,left_margin=12Plots.mm,
 #     		   legendfontsize=13, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("2-norm of the error [s]",font(14)), linecolor = :black)  # ylims=(0,1e6)
 # plot!(norm_energy_dn[6],label=  L"\kappa = 1.25\, h^{-1}", linewidth = 3, linestyle=:dash)
-# plot!(norm_energy_dn[7],label=  L"\kappa = 1.50\, h^{-1}", linewidth = 3, linestyle=:dashdot)
-# plot!(norm_energy_dn[8],label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot)
+# plot!(norm_energy_dn[7],label=  L"\kappa = 1.50\, h^{-1}", linewidth = 3, linestyle=:dashdot, linecolor = :black)
+# plot!(norm_energy_dn[8],label=  L"\kappa = 1.75\, h^{-1}", linewidth = 3, linestyle=:dashdotdot, linecolor = :black)
 # plot!(norm_energy_dn[9], label= L"\kappa = 2.00\, h^{-1}", linewidth = 3, linestyle=:dot)
 # #title!("Error norm")
-# savefig("$dir/201207_kappa2_Y6_hetero_dn.png")
+# savefig("$dir/201207_kappa2_Y6_hetero_dn.svg")
 
 # # never save the solutions INSIDE the git repo, they are too large, please make a folder solutions at the same level as the git repo and save them there
 # jldopen("../../solutions/sol_def_N4.jld2", true, true, true, IOStream) do file

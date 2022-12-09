@@ -182,33 +182,33 @@ compound_pars.residual_demand = residual_demand #t -> zeros(N) #residual_demand
 compound_pars.graph = graph
 
 
-using Plots
-plotlyjs()
-dd = t->((periodic_demand(t) .+ residual_demand(t)))
-plot(0:7*l_day, t -> dd(t)[1],ytickfontsize=14,
-               xtickfontsize=18, margin=5Plots.mm,
-    		   legendfontsize=12, linewidth=3,xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),xaxis=("days [c]",font(14)), yaxis=("normed demand H0",font(14)), legend=nothing)
-#title!("Demand for one week in winter (household)")
-savefig("$dir/plots/real_demand_winter_week_1.svg")
-
-plot(0:7*l_day, t -> dd(t)[2],ytickfontsize=14,
-               xtickfontsize=18, margin=5Plots.mm,
-    		   legendfontsize=12, linewidth=3,xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),xaxis=("days [c]",font(14)), yaxis=("normed demand G1",font(14)), legend=nothing)
-#title!("Demand for one week in winter (household)")
-savefig("$dir/plots/real_demand_winter_week_2.svg")
-
-plot(0:7*l_day, t -> dd(t)[3],ytickfontsize=14,
-               xtickfontsize=18, margin=5Plots.mm,
-    		   legendfontsize=12, linewidth=3,xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),xaxis=("days [c]",font(14)), yaxis=("normed demand G4",font(14)), legend=nothing)
-#title!("Demand for one week in winter (household)")
-savefig("$dir/plots/real_demand_winter_week_3.svg")
-
-plot(0:7*l_day, t -> dd(t)[4],ytickfontsize=14,
-               xtickfontsize=18, margin=5Plots.mm,
-    		   legendfontsize=12, linewidth=3,xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),xaxis=("days [c]",font(14)), yaxis=("normed demand mix",font(14)), legend=nothing)
-#title!("Demand for one week in winter (household)")
-savefig("$dir/plots/real_demand_winter_week_4.svg")
-
+# using Plots
+# plotlyjs()
+ dd = t->((periodic_demand(t) .+ residual_demand(t)))
+# plot(0:7*l_day, t -> dd(t)[1],ytickfontsize=14,
+#                xtickfontsize=18, margin=5Plots.mm,
+#     		   legendfontsize=12, linewidth=3,xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),xaxis=("days [c]",font(14)), yaxis=("normed demand H0",font(14)), legend=nothing)
+# #title!("Demand for one week in winter (household)")
+# savefig("$dir/plots/real_demand_winter_week_1.svg")
+#
+# plot(0:7*l_day, t -> dd(t)[2],ytickfontsize=14,
+#                xtickfontsize=18, margin=5Plots.mm,
+#     		   legendfontsize=12, linewidth=3,xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),xaxis=("days [c]",font(14)), yaxis=("normed demand G1",font(14)), legend=nothing)
+# #title!("Demand for one week in winter (household)")
+# savefig("$dir/plots/real_demand_winter_week_2.svg")
+#
+# plot(0:7*l_day, t -> dd(t)[3],ytickfontsize=14,
+#                xtickfontsize=18, margin=5Plots.mm,
+#     		   legendfontsize=12, linewidth=3,xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),xaxis=("days [c]",font(14)), yaxis=("normed demand G4",font(14)), legend=nothing)
+# #title!("Demand for one week in winter (household)")
+# savefig("$dir/plots/real_demand_winter_week_3.svg")
+#
+# plot(0:7*l_day, t -> dd(t)[4],ytickfontsize=14,
+#                xtickfontsize=18, margin=5Plots.mm,
+#     		   legendfontsize=12, linewidth=3,xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)),xaxis=("days [c]",font(14)), yaxis=("normed demand mix",font(14)), legend=nothing)
+# #title!("Demand for one week in winter (household)")
+# savefig("$dir/plots/real_demand_winter_week_4.svg")
+#
 
 
 @everywhere begin
@@ -228,6 +228,7 @@ end
 ######################################################################
 
 using Plots
+	plotlyjs()
 hourly_energy = zeros(24*num_days+1,N)
 for i=1:24*num_days+1
 	for j = 1:N
@@ -307,7 +308,7 @@ plot!(2:num_days, sum(ILC_power_agg[2:num_days,1,:],dims=2), label=L"$\bar u^c$"
     		   legendfontsize=14, linewidth=3,xaxis=("days [c]",font(14)), yaxis=("normed power",font(14)), legend=:bottomright, linestyle = :solid, lc = :black)
 #xlabel!("day d [d]")
 #ylabel!("normed quantities [a.u.]")
-savefig("$dir/plots/real_demand_daily_hetero.png")
+savefig("$dir/plots/real_demand_daily_hetero.svg")
 #
 # plot(2:num_days, sum(ILC_power_agg_norm,dims=2), label=L"$\bar u^{ILC}$", ytickfontsize=14,
 #                xtickfontsize=18, margin=5Plots.mm,

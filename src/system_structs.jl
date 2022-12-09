@@ -222,9 +222,11 @@ module system_structs
 
 		ILC_power = zeros(num_days,24,N)
 		norm_energy_d = zeros(num_days,N)
+		norm_energy_dn = zeros(num_days,1)
 		for j = 1:N
 			norm_energy_d[1,j] = norm(hourly_energy[1:24,j])
 		end
+		norm_energy_dn[1,1] = norm(hourly_energy[1:24,:])
 
 		for i=2:num_days
 			for j = 1:N
@@ -233,9 +235,10 @@ module system_structs
 			for j = 1:N
 				norm_energy_d[i,j] = norm(hourly_energy[(i-1)*24+1:i*24,j])
 			end
+			norm_energy_dn[i,1] = norm(hourly_energy[(i-1)*24+1:i*24,:])
 		end
 
-		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, hourly_energy, norm_energy_d), false)
+		((omega_max, ex, control_energy, var_omega, Array(adjacency_matrix(sol.prob.p.graph)), sol.prob.p.hl.kappa, sol.prob.p.hl.ilc_nodes, sol.prob.p.hl.ilc_covers, var_ld, hourly_energy, norm_energy_d, norm_energy_dn), false)
 	end
 
 
@@ -280,6 +283,7 @@ module system_structs
 
 
 		hourly_update = network_dynamics.HourlyUpdateEcon()
+		#hourly_update = network_dynamics.HourlyUpdateEcon()
 
 		ODEProblem(network_dynamics.ACtoymodel!, prob.u0, prob.tspan, prob.p,
 			callback=CallbackSet(PeriodicCallback(hourly_update, 3600, initial_affect= false),
@@ -353,14 +357,16 @@ module system_structs
 		end
 
 		norm_energy_d = zeros(num_days,N)
+		norm_energy_dn = zeros(num_days,1)
 
 		for i=1:num_days
+			norm_energy_dn[i,1] = norm(hourly_energy[(i-1)*24+1:i*24,:])
 			for j = 1:N
 				norm_energy_d[i,j] = norm(hourly_energy[(i-1)*24+1:i*24,j])
 			end
 		end
 
-		((sol.prob.p.hl.kappa, hourly_energy, norm_energy_d), false)
+		((sol.prob.p.hl.kappa, hourly_energy, norm_energy_d, norm_energy_dn), false)
 	end
 
 

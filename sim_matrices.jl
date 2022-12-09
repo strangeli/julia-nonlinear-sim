@@ -6,6 +6,7 @@
 			using DSP
 			using LaTeXStrings
 			using Plots
+			plotlyjs()
 			using FileIO
 	end
 
@@ -226,9 +227,9 @@
 	y3 = mo;
 	# MATLAB: p=find(y1==min(y1));
 	# MATLAB: q=find(y3==min(y3));
-	plot(x,y2, linewidth=3,linestyle = :dot, label = "Upper bound", legend=:topleft, margin=3Plots.mm, xaxis=("kappa [h^{-1}]", font(14)), xtickfontsize=18,legendfontsize=11, yaxis=("Max. eigenvalue or singular value", font(14)),ytickfontsize = 18) #  xticks = (0:0.25:2, string.(0:0.25:2))
-	plot!(x,y1, linewidth=3, label = "AS") # : max(|eig(Q(I-PL))|)
-	plot!(x,y3,linestyle=:dash, linewidth=3, label = "MC");# max(sv(PQ/P(I-PL))
+	plot(x,y2, linewidth=3,linestyle = :dot, label = "Upper bound", legend=:topleft, margin=3Plots.mm, xaxis=(L"\kappa\, [h^{-1}]", font(14)), xtickfontsize=18,legendfontsize=11, yaxis=("Max. eigenvalue or singular value", font(14)),ytickfontsize = 18) #  xticks = (0:0.25:2, string.(0:0.25:2))
+	plot!(x,y1, linewidth=3, label = L"$\rho \, (Q(I-LP))$") # : max(|eig(Q(I-PL))|)
+	plot!(x,y3,linestyle=:dash, linewidth=3, label = L"$\bar \sigma \, (PQP^{-1}(I-PL))$");# max(sv(PQ/P(I-PL))
 	# MATLAB:text(x(p),y1(p),[num2str(x(p))],'color','k');
 	# MATLAB:text(x(q),y3(q),[num2str(x(q))],'color','k');
 	ylims!(0,1.5)
@@ -236,5 +237,5 @@
 	dir = @__DIR__
 	using Dates
 	date = Dates.now()
-	savefig("$dir/plots/$(date)_ewplot_julia_$(Yfactor)_$(l)_hetero.png")
+	savefig("$dir/plots/$(date)_ewplot_julia_$(Yfactor)_$(l)_hetero.svg")
 end

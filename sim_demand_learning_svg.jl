@@ -141,12 +141,12 @@ samples = 24*4
 inter = interpolate([.2 * randn(N) for i in 1:(num_days * samples + 1)], BSpline(Linear()))
 residual_demand = t -> inter(1. + t / (24*3600) * samples) # 1. + is needed to avoid trying to access out of range
 
-using Plots
-plotlyjs()
-using LaTeXStrings
-dd = t->((periodic_demand(t) .+ residual_demand(t)))
-plot(0:num_days*l_day, t -> (dd(t)[1] .+ dd(t)[2] .+ dd(t)[3] .+ dd(t)[4]), alpha=0.6, label = latexstring("\$P^d_j\$"),linewidth=3, linestyle=:dot)
-
+# using Plots
+# plotlyjs()
+# using LaTeXStrings
+# dd = t->((periodic_demand(t) .+ residual_demand(t)))
+# plot(0:num_days*l_day, t -> (dd(t)[1] .+ dd(t)[2] .+ dd(t)[3] .+ dd(t)[4]), alpha=0.6, label = latexstring("\$P^d_j\$"),linewidth=3, linestyle=:dot)
+#
 
 #########################################
 #            SIM                      #
@@ -190,6 +190,7 @@ sol1 = solve(ode_tl1, Rodas4())
 ######################################################################
 
 using Plots
+plotlyjs()
 
 # phi = [p[1:N] for p in sol1.u]
 # phi_lin = [p[1:N] for p in sol.u]
@@ -260,11 +261,11 @@ dd = t->((periodic_demand(t) .+ residual_demand(t)))
 plot!(0:num_days*l_day, t -> dd(t)[1], alpha=0.6, label = latexstring("P^d_$node"),linewidth=3, linestyle=:dot)
 plot!(1:3600:24*num_days*3600,hourly_energy[1:num_days*24,node]./3600, label=latexstring("y_$node^{c,h}"),linewidth=3) #, linestyle=:dash)
 plot!(1:3600:num_days*24*3600,  ILC_power_hourly_mean_node[1:num_days*24], label=latexstring("\$u_$node^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
-               xtickfontsize=14,
+               xtickfontsize=14, #xaxis=("days [c]",font(14))
     		   legendfontsize=10, linewidth=3, yaxis=("normed power",font(14)),legend=false, lc =:black, margin=5Plots.mm)
 ylims!(-0.7,1.5)
 title!(L"j = 1")
-savefig("$dir/plots/demand_seconds_Y$(coupfact)_node_$(node)_hetero.png")
+#savefig("$dir/plots/demand_seconds_Y$(coupfact)_node_$(node)_hetero.png")
 
 node = 2
 p2 = plot()
@@ -273,11 +274,11 @@ dd = t->((periodic_demand(t) .+ residual_demand(t)))
 plot!(0:num_days*l_day, t -> dd(t)[2], alpha=0.6, label = latexstring("P^d_$node"),linewidth=3, linestyle=:dot)
 plot!(1:3600:24*num_days*3600,hourly_energy[1:num_days*24,node]./3600, label=latexstring("y_$node^{c,h}"),linewidth=3)#, linestyle=:dash)
 plot!(1:3600:num_days*24*3600,  ILC_power_hourly_mean_node[1:num_days*24], label=latexstring("\$u_$node^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
-               xtickfontsize=14, yticks=false, #xaxis=("days [c]",font(14)), yaxis=("normed power",font(14))
+               xtickfontsize=14,#xaxis=("days [c]",font(14)), yaxis=("normed power",font(14)), #yticks=false,
     		   legendfontsize=10, linewidth=3,legend=false, lc =:black, margin=5Plots.mm)
 ylims!(-0.7,1.5)
 title!(L"j = 2")
-savefig("$dir/plots/demand_seconds_Y$(coupfact)_node_$(node)_hetero.png")
+#savefig("$dir/plots/demand_seconds_Y$(coupfact)_node_$(node)_hetero.png")
 
 node = 3
 p3 = plot()
@@ -290,7 +291,7 @@ plot!(1:3600:num_days*24*3600,  ILC_power_hourly_mean_node[1:num_days*24], label
     		   legendfontsize=10, linewidth=3,xaxis=("days [c]",font(14)),yaxis=("normed power",font(14)),legend=false, lc =:black, margin=5Plots.mm)
 ylims!(-0.7,1.5)
 title!(L"j = 3")
-savefig("$dir/plots/demand_seconds_Y$(coupfact)_node_$(node)_hetero.png")
+#savefig("$dir/plots/demand_seconds_Y$(coupfact)_node_$(node)_hetero.png")
 
 node = 4
 p4 = plot()
@@ -299,19 +300,19 @@ dd = t->((periodic_demand(t) .+ residual_demand(t)))
 plot!(0:num_days*l_day, t -> dd(t)[4], alpha=0.6, label = latexstring("P^d_$node"),linewidth=3, linestyle=:dot)
 plot!(1:3600:24*num_days*3600,hourly_energy[1:num_days*24,node]./3600, label=latexstring("y_$node^{c,h}"),linewidth=3)#, linestyle=:dash)
 plot!(1:3600:num_days*24*3600,  ILC_power_hourly_mean_node[1:num_days*24], label=latexstring("\$u_$node^{ILC}\$"), xticks = (0:3600*24:num_days*24*3600, string.(0:num_days)), ytickfontsize=14,
-               xtickfontsize=18,
-    		   legendfontsize=10, yticks=false, linewidth=3,xaxis=("days [c]",font(14)),legend=false, lc =:black, margin=5Plots.mm)
+               xtickfontsize=18, #yticks=false
+    		   legendfontsize=10, linewidth=3,xaxis=("days [c]",font(14)),legend=false, lc =:black, margin=5Plots.mm)
 ylims!(-0.7,1.5)
 title!(L"j = 4")
-savefig("$dir/plots/demand_seconds_Y$(coupfact)_node_$(node)_hetero.png")
+#savefig("$dir/plots/demand_seconds_Y$(coupfact)_node_$(node)_hetero.png")
 
 l = @layout [a b; c d]
 plot_demand = plot(p1,p2,p3,p4,layout = l)
-savefig(plot_demand, "$dir/plots/demand_seconds_Y$(coupfact)_all_nodes_hetero.png")
+savefig(plot_demand, "$dir/plots/demand_seconds_Y$(coupfact)_all_nodes_hetero2.svg")
 
-l2 = @layout [a b]
-plot_demand2 = plot(p2,p4,layout = l2)
-savefig(plot_demand2, "$dir/plots/demand_seconds_Y$(coupfact)_nodes2+4_hetero.png")
+# l2 = @layout [a b]
+# plot_demand2 = plot(p2,p4,layout = l2)
+# savefig(plot_demand2, "$dir/plots/demand_seconds_Y$(coupfact)_nodes2+4_hetero.png")
 
 psum = plot()
 ILC_power_hourly_mean_sum = vcat(ILC_power[:,:,1]'...) .+ vcat(ILC_power[:,:,2]'...) .+ vcat(ILC_power[:,:,3]'...) .+ vcat(ILC_power[:,:,4]'...)
@@ -323,25 +324,25 @@ plot!(1:3600:num_days*24*3600,  ILC_power_hourly_mean_sum[1:num_days*24], label=
     		   legendfontsize=10, linewidth=3,xaxis=("days [c]",font(14)),  yaxis=("normed power",font(14)),lc =:black, margin=5Plots.mm)
 #ylims!(-0.7,1.5)
 #title!("Initial convergence")
-savefig(psum,"$dir/plots/demand_seconds_Y$(coupfact)_sum_hetero.png")
+savefig(psum,"$dir/plots/demand_seconds_Y$(coupfact)_sum_hetero.svg")
 
 
-
-
-# hourly plotting
-using LaTeXStrings
-plot(0:(num_days)*24-1, ILC_power_hourly[1:num_days*24], label=L"$\max_h \Vert P_{ILC, k}\Vert$", xticks = (1:24:24*num_days, string.(1:num_days)))
-plot!(0:24*num_days-1,norm_hourly_energy./3600, label=L"y_h")
-plot!(0:24:24*num_days-1, load_amp, label = "demand amplitude")
-xlabel!("hour h [h]")
-ylabel!("normed quantities [a.u.]")
-savefig("$dir/plots/yh_demand_ILC_new_hourly_hetero.png")
-
-
-# daily plotting
-plot(1:num_days, ILC_power_agg[1:num_days,1,1] ./ maximum(ILC_power_agg), label=L"$\max_h \Vert P_{ILC, k}\Vert$")
-plot!(1:num_days, mean(norm_energy_d,dims=2) ./ maximum(norm_energy_d), label=L"norm(y_h)")
-plot!(1:num_days, load_amp  ./ maximum(load_amp), label = "demand amplitude")
-xlabel!("day d [d]")
-ylabel!("normed quantities [a.u.]")
-savefig("$dir/plots/demand_daily_hetero.png")
+#
+#
+# # hourly plotting
+# using LaTeXStrings
+# plot(0:(num_days)*24-1, ILC_power_hourly[1:num_days*24], label=L"$\max_h \Vert P_{ILC, k}\Vert$", xticks = (1:24:24*num_days, string.(1:num_days)))
+# plot!(0:24*num_days-1,norm_hourly_energy./3600, label=L"y_h")
+# plot!(0:24:24*num_days-1, load_amp, label = "demand amplitude")
+# xlabel!("hour h [h]")
+# ylabel!("normed quantities [a.u.]")
+# savefig("$dir/plots/yh_demand_ILC_new_hourly_hetero.png")
+#
+#
+# # daily plotting
+# plot(1:num_days, ILC_power_agg[1:num_days,1,1] ./ maximum(ILC_power_agg), label=L"$\max_h \Vert P_{ILC, k}\Vert$")
+# plot!(1:num_days, mean(norm_energy_d,dims=2) ./ maximum(norm_energy_d), label=L"norm(y_h)")
+# plot!(1:num_days, load_amp  ./ maximum(load_amp), label = "demand amplitude")
+# xlabel!("day d [d]")
+# ylabel!("normed quantities [a.u.]")
+# savefig("$dir/plots/demand_daily_hetero.png")
