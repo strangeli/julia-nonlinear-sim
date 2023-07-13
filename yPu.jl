@@ -191,7 +191,7 @@ end
 
 #################################################################
 
-num_days = 10
+num_days = 15
 
 
 struct demand_amp_var
@@ -206,10 +206,10 @@ end
 
 
 # slowly increasing and decreasing amplitude - only working for <= 10 days and N = 4 now
-demand_amp1 = demand_amp_var(repeat([80 80 80 10 10 10 40 40 40 40 40], outer=Int(N/4))') # random positive amp over days by 10%
-demand_amp2 = demand_amp_var(repeat([10 10 10 80 80 80 40 40 40 40 40], outer=Int(N/4))') # random positive amp over days by 10%
-demand_amp3 = demand_amp_var(repeat([60 60 60 60 10 10 10 40 40 40 40], outer=Int(N/4))') # random positive amp over days by 10%
-demand_amp4 = demand_amp_var(repeat([30 30 30 30 10 10 10 80 80 80 80], outer=Int(N/4))') # random positive amp over days by 10%
+demand_amp1 = demand_amp_var(repeat([80 80 80 10 10 10 40 40 40 40 10 10 10 10 10], outer=Int(N/4))') # random positive amp over days by 10%
+demand_amp2 = demand_amp_var(repeat([10 10 10 80 80 80 40 40 40 40 10 10 10 10 10], outer=Int(N/4))') # random positive amp over days by 10%
+demand_amp3 = demand_amp_var(repeat([60 60 60 60 10 10 10 40 40 40 10 10 10 10 10], outer=Int(N/4))') # random positive amp over days by 10%
+demand_amp4 = demand_amp_var(repeat([30 30 30 30 10 10 10 80 80 80 10 10 10 10 10], outer=Int(N/4))') # random positive amp over days by 10%
 demand_amp = t->vcat(demand_amp1(t), demand_amp2(t), demand_amp3(t), demand_amp4(t))
 
 periodic_demand =  t-> demand_amp(t)./100 .* sin(t*pi/(24*3600))^2
@@ -225,7 +225,7 @@ d = zeros(N*24, num_days) # N*24 x num_days
 
 for hours = 0:(24*num_days-1)
 
-  d[Int(mod(hours,num_days))*N+1:(Int(mod(hours,num_days))+1)*N, Int(floor(hours/24)+1)] =  periodic_demand(hours*3600) .+ residual_demand(hours*3600)
+  d[Int(mod(hours,num_days))*N+1:(Int(mod(hours,num_days))+1)*N, Int(floor(hours/24)+1)] =  periodic_demand((hours+1)*3600) .+ residual_demand((hours+1)*3600)
 
 end
 
@@ -237,13 +237,12 @@ u = zeros(N*24, num_days) # N*24 x num_days
 # end
 
 u[:,1] = zeros(24*N)
-y[:,1] = P*(-d[:,1] + u[:,1])*1/3600
-kappa = 1
-
+y[:,1] = P*(-d[:,1] + u[:,1]) ./435
+kappa = 1.0
 
 for days = 2:num_days
     u[:,days] = Q*(u[:, days-1] + kappa * y[:,days-1])
-    y[:,days] = P*(-d[:,days] + u[:,days])*1/3600
+    y[:,days] = P*(-d[:,days] + u[:,days]) ./435
 end
 
 d1 = d[1:4:end, :]
@@ -280,6 +279,8 @@ using Plots
 plot(1:num_days*24,ysum)
 plot!(1:num_days*24,dsum)
 plot!(1:num_days*24,usum)
+# working now -> but 435 steps inbetween should be added for the demand, otherwise it is too broad.
+
 #plot!(1:num_days*24,y2v)
 #plot!(1:num_days*24,y3v)
 #plot!(1:num_days*24,y4v)
