@@ -206,10 +206,10 @@ end
 
 
 # slowly increasing and decreasing amplitude - only working for <= 10 days and N = 4 now
-demand_amp1 = demand_amp_var(repeat([80 80 80 10 10 10 40 40 40 40 10 10 10 10 10], outer=Int(N/4))') # random positive amp over days by 10%
-demand_amp2 = demand_amp_var(repeat([10 10 10 80 80 80 40 40 40 40 10 10 10 10 10], outer=Int(N/4))') # random positive amp over days by 10%
-demand_amp3 = demand_amp_var(repeat([60 60 60 60 10 10 10 40 40 40 10 10 10 10 10], outer=Int(N/4))') # random positive amp over days by 10%
-demand_amp4 = demand_amp_var(repeat([30 30 30 30 10 10 10 80 80 80 10 10 10 10 10], outer=Int(N/4))') # random positive amp over days by 10%
+demand_amp1 = demand_amp_var(repeat([80 80 80 10 10 10 40 40 40 40 10 10 10 10 10 10], outer=Int(N/4))') # random positive amp over days by 10%
+demand_amp2 = demand_amp_var(repeat([10 10 10 80 80 80 40 40 40 40 10 10 10 10 10 10], outer=Int(N/4))') # random positive amp over days by 10%
+demand_amp3 = demand_amp_var(repeat([60 60 60 60 10 10 10 40 40 40 10 10 10 10 10 10], outer=Int(N/4))') # random positive amp over days by 10%
+demand_amp4 = demand_amp_var(repeat([30 30 30 30 10 10 10 80 80 80 10 10 10 10 10 10], outer=Int(N/4))') # random positive amp over days by 10%
 demand_amp = t->vcat(demand_amp1(t), demand_amp2(t), demand_amp3(t), demand_amp4(t))
 
 periodic_demand =  t-> demand_amp(t)./100 .* sin(t*pi/(24*3600))^2
@@ -232,9 +232,6 @@ end
 y = zeros(N*24, num_days) # N*24 x num_days
 u = zeros(N*24, num_days) # N*24 x num_days
 
-# for days = 1:num_days
-#    y[:,days] = P*d[:, days] # something wrong with factor 450
-# end
 
 u[:,1] = zeros(24*N)
 y[:,1] = P*(-d[:,1] + u[:,1]) ./435
